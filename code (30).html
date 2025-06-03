@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lysterfield Sailing Club - Results Viewer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f0f8ff;
+        }
+        h1, h2, h3.section-title {
+            color: #003366;
+            text-align: center;
+        }
+        h3.section-title {
+            margin-top: 30px;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .series-select-main {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .series-select-main label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #003366;
+            font-size: 1.1em;
+        }
+        .series-select-main select {
+            width: auto;
+            min-width: 250px;
+            max-width: 90%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 1em;
+        }
+
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px; /* Reduced from 10px, as summary text is gone */
+            font-size: 14px;
+        }
+        .results-table th {
+            background-color: #003366;
+            color: white;
+            text-align: left;
+            padding: 6px 8px;
+            font-weight: bold;
+        }
+        .results-table td {
+            padding: 4px 8px;
+            border: 1px solid #ddd;
+            text-align: left;
+            vertical-align: middle;
+        }
+        .results-table tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        .results-table tr:hover {
+            background-color: #e8f4ff;
+        }
+
+        /* Removed styles for #series-summary and #individual-race-info content */
+        /* They will now just be empty divs, primarily for structure if needed */
+        #series-summary {
+            margin-bottom: 5px; /* Minimal space if any needed before table */
+        }
+         #individual-race-info {
+            margin-top: 0px; /* Minimal space above table if needed */
+            margin-bottom: 5px;
+        }
+
+        .discarded { text-decoration: line-through; color: #888; font-style: italic; }
+        .series-results-table td, .series-results-table th { white-space: nowrap; }
+        .series-results-table .nr-cell { color: #999; font-style: italic; text-align: center; }
+
+        .individual-race-viewer-section { margin-top: 25px; border-top: 2px solid #003366; padding-top: 15px;}
+        .race-selector { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; justify-content: center; }
+        .race-selector button {
+            padding: 5px 10px;
+            font-size: 12px;
+            background-color: #f2f2f2;
+            color: #333;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .race-selector button.active {
+            background-color: #003366;
+            color: white;
+        }
+        .race-selector button.has-results {
+            border: 2px solid #28a745;
+        }
+        #loading-message-container {
+            text-align: center;
+            font-size: 1.2em;
+            padding: 20px;
+            color: #003366;
+        }
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #003366;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 10px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .hidden-content { display: none; }
+
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .container { padding: 10px; }
+            h1 { font-size: 1.3em; }
+            h2, h3.section-title { font-size: 1.1em; }
+
+            .series-select-main label { font-size: 1em; }
+            .series-select-main select {
+                padding: 8px;
+                font-size: 0.9em;
+                min-width: 200px;
+            }
+
+            .results-table { font-size: 12px; }
+            .results-table th { padding: 4px 5px; font-size: 11px; }
+            .results-table td { padding: 3px 5px; font-size: 11px; }
+
+            .series-results-table td,
+            .series-results-table th {
+                white-space: normal; font-size: 10px; padding: 3px 2px; word-break: break-word; vertical-align: top;
+            }
+            .series-results-table th:nth-child(1), .series-results-table td:nth-child(1) { min-width: 20px; width:20px; text-align: center;}
+            .series-results-table th:nth-child(2), .series-results-table td:nth-child(2) { min-width: 35px; }
+            .series-results-table th:nth-child(3), .series-results-table td:nth-child(3) { min-width: 55px; }
+            .series-results-table th:nth-child(4), .series-results-table td:nth-child(4) { min-width: 45px; }
+            .series-results-table th:nth-last-child(1), .series-results-table td:nth-last-child(1),
+            .series-results-table th:nth-last-child(2), .series-results-table td:nth-last-child(2) { min-width: 22px; width: 22px; text-align: center;}
+            .series-results-table th:nth-child(n+5):not(:nth-last-child(-n+2)),
+            .series-results-table td:nth-child(n+5):not(:nth-last-child(-n+2)) {
+                min-width: 25px; text-align: center; padding: 3px 1px;
+            }
+            .series-results-table .nr-cell { font-size: 9px; }
+
+
+            #individual-race-results td, #individual-race-results th {
+                white-space: normal; font-size: 10px; padding: 3px 2px; word-break: break-word; vertical-align: top;
+            }
+            #individual-race-results th:nth-child(1), #individual-race-results td:nth-child(1) { min-width: 20px; text-align: center;}
+            #individual-race-results th:nth-child(2), #individual-race-results td:nth-child(2) { min-width: 40px; }
+            #individual-race-results th:nth-child(3), #individual-race-results td:nth-child(3) { min-width: 50px; }
+            #individual-race-results th:nth-child(4), #individual-race-results td:nth-child(4) { min-width: 60px; }
+            #individual-race-results th:nth-child(5), #individual-race-results td:nth-child(5) { min-width: 25px; text-align: center;}
+            #individual-race-results th:nth-child(6), #individual-race-results td:nth-child(6) { min-width: 35px; text-align: center;}
+            #individual-race-results th:nth-child(7), #individual-race-results td:nth-child(7) { min-width: 45px; text-align: center;}
+            #individual-race-results th:nth-child(8), #individual-race-results td:nth-child(8) { min-width: 45px; text-align: center;}
+            #individual-race-results th:nth-child(9), #individual-race-results td:nth-child(9) { min-width: 25px; text-align: center;}
+
+            .race-selector button { padding: 4px 8px; font-size: 10px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Sailing Club Results</h1>
+
+        <div id="loading-message-container">
+            <p id="loading-text">Loading results data from the cloud...</p>
+            <div class="loading-spinner"></div>
+        </div>
+
+        <div id="results-content" class="hidden-content">
+            <div class="series-select-main">
+                <label for="series-selector-main">Select Series:</label>
+                <select id="series-selector-main"></select>
+            </div>
+
+            <div id="series-results-section">
+                <h2>Overall Series Standings</h2>
+                <div id="series-summary">
+                    <!-- This div will remain empty -->
+                </div>
+                <div style="overflow-x: auto;">
+                    <table id="series-results-table" class="results-table series-results-table">
+                        <thead id="series-results-header"></thead>
+                        <tbody id="series-results-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="individual-race-viewer-section" class="individual-race-viewer-section">
+                <h3 class="section-title">Individual Race Results</h3>
+                <div class="race-selector"></div>
+                <div id="individual-race-info">
+                    <!-- This div will remain empty -->
+                </div>
+                <div style="overflow-x: auto;">
+                    <table id="individual-race-results" class="results-table">
+                        <thead>
+                             <tr><th>Pos</th><th>Sail No</th><th>Boat Type</th><th>Helm</th><th>YS</th><th>Finish</th><th>Elapsed</th><th>Corrected</th><th>Points</th></tr>
+                        </thead>
+                        <tbody id="individual-race-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyTHgUnij7DiwsbKiA7jjNHjNohNfxXW9mtJpkt4XlDrlAXpGoaT4JLeEfSkwcosJHXcw/exec';
+
+        let seriesDataGlobal = [];
+        let currentSelectedSeries = null;
+
+        const seriesSelectorMain = document.getElementById('series-selector-main');
+        const seriesResultsBody = document.getElementById('series-results-body');
+        const seriesResultsHeader = document.getElementById('series-results-header');
+        const seriesSummary = document.getElementById('series-summary');
+        const raceSelector = document.querySelector('.race-selector');
+        const individualRaceInfo = document.getElementById('individual-race-info');
+        const individualRaceBody = document.getElementById('individual-race-body');
+
+        const loadingMessageContainer = document.getElementById('loading-message-container');
+        const loadingText = document.getElementById('loading-text');
+        const resultsContent = document.getElementById('results-content');
+
+        function pluralize(count, singular, plural = null) { return count === 1 ? singular : (plural || singular + 's'); }
+
+        async function loadDataFromGoogleSheet() {
+            if (!WEB_APP_URL) {
+                loadingText.textContent = "Configuration error: Web App URL not set.";
+                document.querySelector('#loading-message-container .loading-spinner').style.display = 'none';
+                return;
+            }
+            try {
+                const response = await fetch(WEB_APP_URL, { method: 'GET', mode: 'cors', cache: 'no-cache', redirect: 'follow' });
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}.`);
+                const resultText = await response.text();
+                const data = JSON.parse(resultText);
+
+                if (data.status === "success") {
+                    if (data.seriesData && Array.isArray(data.seriesData)) {
+                        seriesDataGlobal = data.seriesData.map((s, index) => {
+                            if (!s || typeof s !== 'object') { return null; }
+                            s.id = s.id || (Date.now() + index);
+                            s.name = s.name || `Series ${s.id}`;
+                            s.races = (Array.isArray(s.races) ? s.races : []).map((r, r_idx) => {
+                                if (!r || typeof r !== 'object') return { raceNumber: r_idx + 1, date: null, entries: [], results: [] };
+                                r.raceNumber = typeof r.raceNumber === 'number' ? r.raceNumber : r_idx + 1;
+                                r.entries = (Array.isArray(r.entries) ? r.entries : []).map(entry => ({...entry, elapsedTime: entry.elapsedTime || ''}));
+                                r.results = (Array.isArray(r.results) ? r.results : []).map(result => ({...result, elapsedTime: result.elapsedTime || ''}));
+                                r.date = r.date || null;
+                                return r;
+                            });
+                            s.isShortCourse = typeof s.isShortCourse === 'boolean' ? s.isShortCourse : false;
+                            s.shortCourseSingleDiscardAfter5Races = typeof s.shortCourseSingleDiscardAfter5Races === 'boolean' ? s.shortCourseSingleDiscardAfter5Races : false;
+                            s.numberOfRaces = typeof s.numberOfRaces === 'number' ? s.numberOfRaces : (s.isShortCourse ? s.races.length : 0);
+                            s.discardThreshold = typeof s.discardThreshold === 'number' ? s.discardThreshold : 0;
+                            s.dncScoringRule = ['raceEntries', 'seriesCompetitors'].includes(s.dncScoringRule) ? s.dncScoringRule : 'raceEntries';
+                            if (!s.isShortCourse) {
+                                const expectedNumRaces = s.numberOfRaces || 0;
+                                if (s.races.length !== expectedNumRaces) {
+                                   let existingRacesData = new Map();
+                                   s.races.forEach(r_item => { if (r_item && typeof r_item.raceNumber === 'number') existingRacesData.set(r_item.raceNumber, r_item); });
+                                   let reconciledRaces = [];
+                                   for (let i_race = 1; i_race <= expectedNumRaces; i_race++) {
+                                       const existing = existingRacesData.get(i_race);
+                                       reconciledRaces.push({
+                                           raceNumber: i_race, date: existing?.date || null,
+                                           entries: Array.isArray(existing?.entries) ? existing.entries : [],
+                                           results: Array.isArray(existing?.results) ? existing.results : []
+                                       });
+                                   }
+                                   s.races = reconciledRaces;
+                                }
+                            }
+                            s.races.sort((a, b) => (a.raceNumber || 0) - (b.raceNumber || 0));
+                            return s;
+                        }).filter(s => s !== null);
+                    } else { seriesDataGlobal = []; }
+
+                    loadingMessageContainer.style.display = 'none';
+                    resultsContent.classList.remove('hidden-content');
+                    populateMainSeriesSelector();
+                    if (seriesDataGlobal.length > 0) {
+                        seriesSelectorMain.selectedIndex = 1;
+                        handleSeriesSelectionChange();
+                    } else {
+                        seriesSummary.innerHTML = ''; // Clear summary if no data
+                        if (document.getElementById('series-results-section')) { // Check if element exists
+                           document.getElementById('series-results-section').innerHTML = '<p style="text-align:center;">No series data found in the cloud.</p>';
+                        }
+                    }
+                } else { throw new Error(data.message || "Unknown error from script."); }
+            } catch (error) {
+                loadingText.textContent = `Error loading results: ${error.message}`;
+                document.querySelector('#loading-message-container .loading-spinner').style.display = 'none';
+            }
+        }
+
+        function populateMainSeriesSelector() {
+            seriesSelectorMain.innerHTML = '<option value="">-- Select a Series --</option>';
+            seriesDataGlobal.sort((a, b) => a.name.localeCompare(b.name));
+            seriesDataGlobal.forEach(s => {
+                const option = document.createElement('option');
+                option.value = s.id;
+                option.textContent = s.name + (s.isShortCourse ? ' (Short Course)' : '');
+                seriesSelectorMain.appendChild(option);
+            });
+        }
+
+        function handleSeriesSelectionChange() {
+            const selectedSeriesId = seriesSelectorMain.value;
+             seriesSummary.innerHTML = ''; // Clear previous summary
+             individualRaceInfo.innerHTML = ''; // Clear previous race info
+
+            if (!selectedSeriesId) {
+                seriesResultsHeader.innerHTML = '';
+                seriesResultsBody.innerHTML = '';
+                raceSelector.innerHTML = '';
+                individualRaceBody.innerHTML = '';
+                currentSelectedSeries = null;
+                return;
+            }
+            currentSelectedSeries = seriesDataGlobal.find(s => String(s.id) === selectedSeriesId);
+            if (currentSelectedSeries) {
+                displaySeriesResults(currentSelectedSeries);
+                displayRaceSelectorAndDefaultRace(currentSelectedSeries);
+            }
+        }
+
+        function displaySeriesResults(selectedSeries) {
+            seriesResultsBody.innerHTML = '';
+            seriesResultsHeader.innerHTML = '<tr><th>Loading...</th></tr>';
+            seriesSummary.innerHTML = ''; // Ensure summary is cleared before repopulating or if no results
+
+            const racesWithResults = selectedSeries.races.filter(r => r.results && r.results.length > 0);
+            const completedRacesCount = racesWithResults.length;
+            let numDiscardsToApply = 0; // Discard logic remains for calculation but not displayed in summary
+
+            if (selectedSeries.isShortCourse) {
+                if (selectedSeries.shortCourseSingleDiscardAfter5Races && completedRacesCount >= 5) {
+                    numDiscardsToApply = 1;
+                }
+            } else {
+                const discardThreshold = selectedSeries.discardThreshold ?? 0;
+                if (discardThreshold > 0 && completedRacesCount > 0) {
+                    numDiscardsToApply = Math.floor(completedRacesCount / discardThreshold);
+                }
+            }
+
+            // seriesSummary.innerHTML is NOT populated with series details anymore.
+
+            if (completedRacesCount === 0 && !(selectedSeries.isShortCourse && selectedSeries.races.length > 0) && selectedSeries.numberOfRaces === 0 && selectedSeries.races.length === 0) {
+                seriesResultsHeader.innerHTML = ''; seriesResultsBody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No races or results available for this series.</td></tr>'; return;
+            }
+
+            const raceNumbersInSeries = selectedSeries.races.map(r => r.raceNumber).sort((a, b) => a - b);
+             if (raceNumbersInSeries.length === 0 && !selectedSeries.isShortCourse && selectedSeries.numberOfRaces > 0) {
+                let headerHTML = `<tr><th>Pos</th><th>Sail #</th><th>Skipper</th><th>Boat Class</th>`;
+                for(let i=1; i<=selectedSeries.numberOfRaces; i++) headerHTML += `<th>R${i}</th>`;
+                headerHTML += `<th>Total</th><th>Net</th></tr>`;
+                seriesResultsHeader.innerHTML = headerHTML;
+                seriesResultsBody.innerHTML = `<tr><td colspan="${4 + selectedSeries.numberOfRaces + 2}" style="text-align:center;">No results entered yet.</td></tr>`;
+                return;
+            } else if (raceNumbersInSeries.length === 0) {
+                 seriesResultsHeader.innerHTML = ''; seriesResultsBody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No races defined for this series.</td></tr>'; return;
+            }
+
+            let headerHTML = `<tr><th>Pos</th><th>Sail #</th><th>Skipper</th><th>Boat Class</th>`;
+            raceNumbersInSeries.forEach(num => headerHTML += `<th>R${num}</th>`);
+            headerHTML += `<th>Total</th><th>Net</th></tr>`;
+            seriesResultsHeader.innerHTML = headerHTML;
+
+            const competitors = new Map();
+            let allSailNumbers = new Set(); selectedSeries.races.forEach(r => { if (r.results) r.results.forEach(res => allSailNumbers.add(res.sailNumber)); });
+            allSailNumbers.forEach(sailNo => {
+                if (!competitors.has(sailNo)) {
+                    let lastResult = null; for (let i = selectedSeries.races.length - 1; i >= 0; i--) { const r = selectedSeries.races[i]; if (r.results) { lastResult = r.results.find(res => res.sailNumber === sailNo); if (lastResult) break; } }
+                    competitors.set(sailNo, { sailNumber: sailNo, skipper: lastResult?.skipper || 'N/A', boatClass: lastResult?.boatClass || 'N/A', raceScores: new Map(), totalPoints: 0, netPoints: 0, position: 0 });
+                }
+            });
+            selectedSeries.races.forEach(race => {
+                const raceNum = race.raceNumber; if (race.results && race.results.length > 0) { race.results.forEach(result => { const competitor = competitors.get(result.sailNumber); if (competitor) competitor.raceScores.set(raceNum, { points: result.points, status: result.status.toUpperCase(), position: result.position, discarded: false }); });}
+            });
+            competitors.forEach(competitor => {
+                  const dncRule = selectedSeries.dncScoringRule || 'raceEntries'; const totalSeriesCompetitors = competitors.size;
+                  raceNumbersInSeries.forEach(raceNum => {
+                      if (!competitor.raceScores.has(raceNum)) {
+                          const correspondingRace = selectedSeries.races.find(r => r.raceNumber === raceNum);
+                          if (correspondingRace && correspondingRace.results && correspondingRace.results.length > 0) {
+                              let dncPoints; if (dncRule === 'raceEntries') { const numEntriesInRace = correspondingRace.results.length; dncPoints = numEntriesInRace + 1; } else { dncPoints = totalSeriesCompetitors + 1; }
+                              competitor.raceScores.set(raceNum, { points: dncPoints, status: 'DNC', position: 'DNC', discarded: false });
+                          } else { competitor.raceScores.set(raceNum, { points: null, status: 'NR', position: 'NR', discarded: false }); }
+                      }
+                  });
+                  const validScores = Array.from(competitor.raceScores.values()).filter(score => score && score.points !== null && !isNaN(score.points));
+                  competitor.totalPoints = validScores.reduce((sum, score) => sum + score.points, 0);
+                  if (validScores.length > 0 && numDiscardsToApply > 0) {
+                      const scoresEligibleForDiscard = Array.from(competitor.raceScores.entries()).filter(([rn, score]) => score && score.points !== null && !isNaN(score.points)).map(([rn, score]) => ({ ...score, raceNumber: rn })).sort((a, b) => b.points - a.points);
+                      for(let i = 0; i < Math.min(numDiscardsToApply, scoresEligibleForDiscard.length); i++){ const raceNumToDiscard = scoresEligibleForDiscard[i].raceNumber; const scoreToDiscard = competitor.raceScores.get(raceNumToDiscard); if (scoreToDiscard) scoreToDiscard.discarded = true; }
+                  }
+                   competitor.netPoints = Array.from(competitor.raceScores.values()).reduce((sum, score) => { if (score && score.points !== null && !isNaN(score.points) && !score.discarded) return sum + score.points; return sum; }, 0);
+            });
+            const competitorsArray = Array.from(competitors.values());
+            competitorsArray.sort((a,b) => {
+                 if (a.netPoints !== b.netPoints) return a.netPoints - b.netPoints; let lastCommonRaceResult = 0; const sortedRaceNumbersDesc = [...raceNumbersInSeries].sort((x, y) => y - x);
+                 for (const raceNum of sortedRaceNumbersDesc) { const scoreA = a.raceScores.get(raceNum); const scoreB = b.raceScores.get(raceNum); const pointsA = (scoreA && !scoreA.discarded && scoreA.points != null && !isNaN(scoreA.points)) ? scoreA.points : null; const pointsB = (scoreB && !scoreB.discarded && scoreB.points != null && !isNaN(scoreB.points)) ? scoreB.points : null; if (pointsA !== null && pointsB !== null) { if(pointsA !== pointsB) { lastCommonRaceResult = pointsA - pointsB; break; } } else if (pointsA !== null) { return -1; } else if (pointsB !== null) { return 1; } }
+                 if (lastCommonRaceResult !== 0) return lastCommonRaceResult; const scoresA_nonDiscarded = Array.from(a.raceScores.values()).filter(s => s && !s.discarded && s.points !== null && !isNaN(s.points)).map(s => s.points).sort((x, y) => x - y); const scoresB_nonDiscarded = Array.from(b.raceScores.values()).filter(s => s && !s.discarded && s.points !== null && !isNaN(s.points)).map(s => s.points).sort((x, y) => x - y);
+                 for (let i = 0; i < Math.min(scoresA_nonDiscarded.length, scoresB_nonDiscarded.length); i++) { if (scoresA_nonDiscarded[i] !== scoresB_nonDiscarded[i]) return scoresA_nonDiscarded[i] - scoresB_nonDiscarded[i]; }
+                 if (numDiscardsToApply > 0) { const discardedA_scores = Array.from(a.raceScores.values()).filter(s => s && s.discarded && s.points !== null && !isNaN(s.points)).map(s => s.points).sort((x, y) => x - y); const discardedB_scores = Array.from(b.raceScores.values()).filter(s => s && s.discarded && s.points !== null && !isNaN(s.points)).map(s => s.points).sort((x, y) => x - y); if (discardedA_scores.length > 0 && discardedB_scores.length > 0 && discardedA_scores[0] !== discardedB_scores[0]) { return discardedA_scores[0] - discardedB_scores[0]; } }
+                 return a.sailNumber.localeCompare(b.sailNumber, undefined, { numeric: true });
+            });
+            let currentRank = 0; let currentPosition = 0;
+            for (let i = 0; i < competitorsArray.length; i++) { currentRank++; if (i === 0 || checkTieBrokenSeries(competitorsArray[i], competitorsArray[i-1], raceNumbersInSeries, numDiscardsToApply > 0)) { currentPosition = currentRank; } competitorsArray[i].position = currentPosition; }
+
+            seriesResultsBody.innerHTML = '';
+            if (competitorsArray.length === 0 && completedRacesCount > 0) { seriesResultsBody.innerHTML = `<tr><td colspan="${raceNumbersInSeries.length + 6}" style="text-align:center;">No competitors found with results.</td></tr>`; }
+            else if (competitorsArray.length === 0 && completedRacesCount === 0 && selectedSeries.races.length > 0) { seriesResultsBody.innerHTML = `<tr><td colspan="${raceNumbersInSeries.length + 6}" style="text-align:center;">Results not yet entered for races in this series.</td></tr>`;}
+
+            competitorsArray.forEach(competitor => {
+                const row = seriesResultsBody.insertRow(); let rowHTML = `<td>${competitor.position}</td><td>${competitor.sailNumber}</td><td>${competitor.skipper}</td><td>${competitor.boatClass}</td>`;
+                raceNumbersInSeries.forEach(raceNum => {
+                    const score = competitor.raceScores.get(raceNum);
+                    if (!score || score.status === 'NR') { rowHTML += `<td class="nr-cell" title="No Race / Not Sailed">NR</td>`; }
+                    else { const points = (score.points !== null && !isNaN(score.points)) ? score.points : '-'; const status = score.status.toUpperCase(); let cellContent = points; if (status !== 'FINISHED' && status !== 'NR' && status !== 'DNC') { cellContent = `${points}(${status})`; } else if (status === 'DNC' && score.points != null) { cellContent = `${points}(DNC)`; } else if (status === 'NR') { cellContent = 'NR'; } const title = `title="${status} (Race Pos: ${score.position ?? status})"`; rowHTML += `<td class="${score.discarded ? 'discarded' : ''}" ${title}>${cellContent}</td>`; }
+                });
+                rowHTML += `<td>${competitor.totalPoints}</td><td><strong>${competitor.netPoints}</strong></td>`; row.innerHTML = rowHTML;
+            });
+        }
+        
+        function checkTieBrokenSeries(boatA, boatB, raceNums, discardsWereAppliedForNet) {
+            if (boatA.netPoints !== boatB.netPoints) return true;
+            const sortedRaceNumbersDesc = [...raceNums].sort((x, y) => y - x);
+            for (const raceNum of sortedRaceNumbersDesc) {
+                const scoreA = boatA.raceScores.get(raceNum); const scoreB = boatB.raceScores.get(raceNum);
+                const pointsA = (scoreA && !scoreA.discarded && scoreA.points != null && !isNaN(scoreA.points)) ? scoreA.points : null;
+                const pointsB = (scoreB && !scoreB.discarded && scoreB.points != null && !isNaN(scoreB.points)) ? scoreB.points : null;
+                if (pointsA !== null && pointsB !== null) { if(pointsA !== pointsB) return true; }
+                else if (pointsA !== null) return true; else if (pointsB !== null) return true;
+            }
+            const scoresA_nd = Array.from(boatA.raceScores.values()).filter(s => s && !s.discarded && s.points !== null && !isNaN(s.points)).map(s => s.points).sort((x, y) => x - y);
+            const scoresB_nd = Array.from(boatB.raceScores.values()).filter(s => s && !s.discarded && s.points !== null && !isNaN(s.points)).map(s => s.points).sort((x, y) => x - y);
+            for (let i = 0; i < Math.min(scoresA_nd.length, scoresB_nd.length); i++) { if (scoresA_nd[i] !== scoresB_nd[i]) return true; }
+            if (scoresA_nd.length !== scoresB_nd.length) return true;
+            if (discardsWereAppliedForNet) {
+               const discardedA_s = Array.from(boatA.raceScores.values()).filter(s => s && s.discarded && s.points !== null && !isNaN(s.points)).map(s => s.points).sort((x, y) => x - y);
+               const discardedB_s = Array.from(boatB.raceScores.values()).filter(s => s && s.discarded && s.points !== null && !isNaN(s.points)).map(s => s.points).sort((x, y) => x - y);
+               if (discardedA_s.length > 0 && discardedB_s.length > 0 && discardedA_s[0] !== discardedB_s[0]) return true;
+            }
+            if (boatA.sailNumber.localeCompare(boatB.sailNumber, undefined, { numeric: true }) !== 0) return true;
+            return false;
+         }
+
+        function displayRaceSelectorAndDefaultRace(selectedSeries) {
+            raceSelector.innerHTML = '';
+            individualRaceInfo.innerHTML = ''; // Ensure this is cleared
+            individualRaceBody.innerHTML = '';
+
+            const raceNumbersToShow = selectedSeries.races.map(r => r.raceNumber).sort((a, b) => a - b);
+            if (raceNumbersToShow.length === 0) {
+                raceSelector.innerHTML = '<p style="text-align:center; width:100%;">No races found in this series.</p>';
+                return;
+            }
+
+            let lastRaceWithResultsNum = -1;
+            const sortedRacesWithResults = selectedSeries.races
+                .filter(r => r.results && r.results.length > 0)
+                .sort((a,b) => b.raceNumber - a.raceNumber);
+
+            if (sortedRacesWithResults.length > 0) {
+                lastRaceWithResultsNum = sortedRacesWithResults[0].raceNumber;
+            }
+
+            raceNumbersToShow.forEach(raceNum => {
+                const raceBtn = document.createElement('button');
+                raceBtn.textContent = `Race ${raceNum}`;
+                raceBtn.classList.add('race-button');
+                raceBtn.dataset.raceNumber = raceNum;
+                const race = selectedSeries.races.find(r => r.raceNumber === raceNum);
+                if (race && race.results && race.results.length > 0) {
+                    raceBtn.classList.add('has-results');
+                }
+                if (raceNum === lastRaceWithResultsNum) {
+                    raceBtn.classList.add('active');
+                }
+                raceBtn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.race-selector .race-button.active').forEach(btn => btn.classList.remove('active'));
+                    e.target.classList.add('active');
+                    displayIndividualRaceResults(selectedSeries, raceNum);
+                });
+                raceSelector.appendChild(raceBtn);
+            });
+
+            if (lastRaceWithResultsNum !== -1) {
+                displayIndividualRaceResults(selectedSeries, lastRaceWithResultsNum);
+            } else if (raceNumbersToShow.length > 0) {
+                const firstButton = raceSelector.querySelector('.race-button');
+                if (firstButton) {
+                    firstButton.classList.add('active');
+                    displayIndividualRaceResults(selectedSeries, parseInt(firstButton.dataset.raceNumber));
+                }
+            }
+        }
+
+        function displayIndividualRaceResults(selectedSeries, raceNumber) {
+            individualRaceBody.innerHTML = '';
+            individualRaceInfo.innerHTML = ''; // Ensure this is cleared before populating or if no results
+            const race = selectedSeries.races.find(r => r.raceNumber === parseInt(raceNumber));
+
+            if (!race) {
+                // individualRaceInfo.innerHTML = `<h3>Race ${raceNumber}</h3><p>Race data not found.</p>`; // No text output
+                return;
+            }
+
+            if (!race.results || race.results.length === 0) {
+                // individualRaceInfo.innerHTML = `<h3>Race ${raceNumber} Results</h3><p>No results recorded for this race.</p>`; // No text output
+                const row = individualRaceBody.insertRow(); const cell = row.insertCell(); cell.colSpan = 9;
+                cell.textContent = 'No results available for this race.'; cell.style.textAlign = 'center';
+                return;
+            }
+            // individualRaceInfo.innerHTML = `<h3>Race ${race.raceNumber} Results</h3><p><strong>Entries:</strong> ${race.results.length}</p>`; // No text output
+
+            const sortedResults = [...race.results].sort((a, b) => {
+                const posA = (typeof a.position === 'number') ? a.position : Infinity; const posB = (typeof b.position === 'number') ? b.position : Infinity; if (posA !== posB) return posA - posB; const pointsA = (a.points != null && !isNaN(a.points)) ? a.points : Infinity; const pointsB = (b.points != null && !isNaN(b.points)) ? b.points : Infinity; if (pointsA !== pointsB) return pointsA - pointsB; return a.sailNumber.localeCompare(b.sailNumber);
+            });
+            sortedResults.forEach(result => {
+                const row = individualRaceBody.insertRow();
+                row.innerHTML = `<td>${result.position ?? '-'}</td><td>${result.sailNumber}</td><td>${result.boatClass}</td><td>${result.skipper}</td><td>${result.yardstick}</td><td>${result.status.toUpperCase()}</td><td>${result.elapsedTime || '-'}</td><td>${result.correctedTime || '-'}</td><td>${result.points ?? '-'}</td>`;
+            });
+        }
+
+        seriesSelectorMain.addEventListener('change', handleSeriesSelectionChange);
+        document.addEventListener('DOMContentLoaded', loadDataFromGoogleSheet);
+
+    </script>
+</body>
+</html>
