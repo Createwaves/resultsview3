@@ -53,7 +53,7 @@
         .results-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 10px; /* Reduced from 10px, as summary text is gone */
+            margin-top: 10px;
             font-size: 14px;
         }
         .results-table th {
@@ -76,13 +76,11 @@
             background-color: #e8f4ff;
         }
 
-        /* Removed styles for #series-summary and #individual-race-info content */
-        /* They will now just be empty divs, primarily for structure if needed */
         #series-summary {
-            margin-bottom: 5px; /* Minimal space if any needed before table */
+            margin-bottom: 5px;
         }
          #individual-race-info {
-            margin-top: 0px; /* Minimal space above table if needed */
+            margin-top: 0px;
             margin-bottom: 5px;
         }
 
@@ -129,6 +127,14 @@
         }
         .hidden-content { display: none; }
 
+        /* Specific for individual race table when status is shown in elapsed col */
+        #individual-race-results .status-in-elapsed {
+            font-style: italic;
+            color: #555;
+            text-align: center;
+        }
+
+
         @media (max-width: 768px) {
             body { padding: 10px; }
             .container { padding: 10px; }
@@ -166,15 +172,18 @@
             #individual-race-results td, #individual-race-results th {
                 white-space: normal; font-size: 10px; padding: 3px 2px; word-break: break-word; vertical-align: top;
             }
-            #individual-race-results th:nth-child(1), #individual-race-results td:nth-child(1) { min-width: 20px; text-align: center;}
-            #individual-race-results th:nth-child(2), #individual-race-results td:nth-child(2) { min-width: 40px; }
-            #individual-race-results th:nth-child(3), #individual-race-results td:nth-child(3) { min-width: 50px; }
-            #individual-race-results th:nth-child(4), #individual-race-results td:nth-child(4) { min-width: 60px; }
-            #individual-race-results th:nth-child(5), #individual-race-results td:nth-child(5) { min-width: 25px; text-align: center;}
-            #individual-race-results th:nth-child(6), #individual-race-results td:nth-child(6) { min-width: 35px; text-align: center;}
-            #individual-race-results th:nth-child(7), #individual-race-results td:nth-child(7) { min-width: 45px; text-align: center;}
-            #individual-race-results th:nth-child(8), #individual-race-results td:nth-child(8) { min-width: 45px; text-align: center;}
-            #individual-race-results th:nth-child(9), #individual-race-results td:nth-child(9) { min-width: 25px; text-align: center;}
+            /* Column widths for Individual Race Table on mobile */
+            #individual-race-results th:nth-child(1), #individual-race-results td:nth-child(1) { min-width: 20px; text-align: center;} /* Pos */
+            #individual-race-results th:nth-child(2), #individual-race-results td:nth-child(2) { min-width: 40px; } /* Sail No */
+            #individual-race-results th:nth-child(3), #individual-race-results td:nth-child(3) { min-width: 50px; } /* Boat Type */
+            #individual-race-results th:nth-child(4), #individual-race-results td:nth-child(4) { min-width: 60px; } /* Helm */
+            #individual-race-results th:nth-child(5), #individual-race-results td:nth-child(5) { min-width: 25px; text-align: center;} /* YS */
+            /* Finish column is removed, so Elapsed is now 6th, Corrected 7th, Points 8th */
+            #individual-race-results th:nth-child(6), #individual-race-results td:nth-child(6) { min-width: 45px; text-align: center;} /* Elapsed (was Finish) */
+            #individual-race-results th:nth-child(7), #individual-race-results td:nth-child(7) { min-width: 45px; text-align: center;} /* Corrected (was Elapsed) */
+            #individual-race-results th:nth-child(8), #individual-race-results td:nth-child(8) { min-width: 25px; text-align: center;} /* Points (was Corrected) */
+            /* Points column used to be 9th, now 8th */
+
 
             .race-selector button { padding: 4px 8px; font-size: 10px; }
         }
@@ -197,9 +206,7 @@
 
             <div id="series-results-section">
                 <h2>Overall Series Standings</h2>
-                <div id="series-summary">
-                    <!-- This div will remain empty -->
-                </div>
+                <div id="series-summary"></div>
                 <div style="overflow-x: auto;">
                     <table id="series-results-table" class="results-table series-results-table">
                         <thead id="series-results-header"></thead>
@@ -211,13 +218,12 @@
             <div id="individual-race-viewer-section" class="individual-race-viewer-section">
                 <h3 class="section-title">Individual Race Results</h3>
                 <div class="race-selector"></div>
-                <div id="individual-race-info">
-                    <!-- This div will remain empty -->
-                </div>
+                <div id="individual-race-info"></div>
                 <div style="overflow-x: auto;">
                     <table id="individual-race-results" class="results-table">
                         <thead>
-                             <tr><th>Pos</th><th>Sail No</th><th>Boat Type</th><th>Helm</th><th>YS</th><th>Finish</th><th>Elapsed</th><th>Corrected</th><th>Points</th></tr>
+                             <!-- Finish column removed -->
+                             <tr><th>Pos</th><th>Sail No</th><th>Boat Type</th><th>Helm</th><th>YS</th><th>Elapsed</th><th>Corrected</th><th>Points</th></tr>
                         </thead>
                         <tbody id="individual-race-body"></tbody>
                     </table>
@@ -306,8 +312,8 @@
                         seriesSelectorMain.selectedIndex = 1;
                         handleSeriesSelectionChange();
                     } else {
-                        seriesSummary.innerHTML = ''; // Clear summary if no data
-                        if (document.getElementById('series-results-section')) { // Check if element exists
+                        seriesSummary.innerHTML = '';
+                        if (document.getElementById('series-results-section')) {
                            document.getElementById('series-results-section').innerHTML = '<p style="text-align:center;">No series data found in the cloud.</p>';
                         }
                     }
@@ -331,8 +337,8 @@
 
         function handleSeriesSelectionChange() {
             const selectedSeriesId = seriesSelectorMain.value;
-             seriesSummary.innerHTML = ''; // Clear previous summary
-             individualRaceInfo.innerHTML = ''; // Clear previous race info
+             seriesSummary.innerHTML = '';
+             individualRaceInfo.innerHTML = '';
 
             if (!selectedSeriesId) {
                 seriesResultsHeader.innerHTML = '';
@@ -352,11 +358,11 @@
         function displaySeriesResults(selectedSeries) {
             seriesResultsBody.innerHTML = '';
             seriesResultsHeader.innerHTML = '<tr><th>Loading...</th></tr>';
-            seriesSummary.innerHTML = ''; // Ensure summary is cleared before repopulating or if no results
+            seriesSummary.innerHTML = '';
 
             const racesWithResults = selectedSeries.races.filter(r => r.results && r.results.length > 0);
             const completedRacesCount = racesWithResults.length;
-            let numDiscardsToApply = 0; // Discard logic remains for calculation but not displayed in summary
+            let numDiscardsToApply = 0;
 
             if (selectedSeries.isShortCourse) {
                 if (selectedSeries.shortCourseSingleDiscardAfter5Races && completedRacesCount >= 5) {
@@ -368,8 +374,6 @@
                     numDiscardsToApply = Math.floor(completedRacesCount / discardThreshold);
                 }
             }
-
-            // seriesSummary.innerHTML is NOT populated with series details anymore.
 
             if (completedRacesCount === 0 && !(selectedSeries.isShortCourse && selectedSeries.races.length > 0) && selectedSeries.numberOfRaces === 0 && selectedSeries.races.length === 0) {
                 seriesResultsHeader.innerHTML = ''; seriesResultsBody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No races or results available for this series.</td></tr>'; return;
@@ -474,7 +478,7 @@
 
         function displayRaceSelectorAndDefaultRace(selectedSeries) {
             raceSelector.innerHTML = '';
-            individualRaceInfo.innerHTML = ''; // Ensure this is cleared
+            individualRaceInfo.innerHTML = ''; 
             individualRaceBody.innerHTML = '';
 
             const raceNumbersToShow = selectedSeries.races.map(r => r.raceNumber).sort((a, b) => a - b);
@@ -525,28 +529,39 @@
 
         function displayIndividualRaceResults(selectedSeries, raceNumber) {
             individualRaceBody.innerHTML = '';
-            individualRaceInfo.innerHTML = ''; // Ensure this is cleared before populating or if no results
+            individualRaceInfo.innerHTML = ''; 
             const race = selectedSeries.races.find(r => r.raceNumber === parseInt(raceNumber));
 
-            if (!race) {
-                // individualRaceInfo.innerHTML = `<h3>Race ${raceNumber}</h3><p>Race data not found.</p>`; // No text output
-                return;
-            }
+            if (!race) { return; }
 
             if (!race.results || race.results.length === 0) {
-                // individualRaceInfo.innerHTML = `<h3>Race ${raceNumber} Results</h3><p>No results recorded for this race.</p>`; // No text output
-                const row = individualRaceBody.insertRow(); const cell = row.insertCell(); cell.colSpan = 9;
+                const row = individualRaceBody.insertRow(); const cell = row.insertCell(); cell.colSpan = 8; // Adjusted colspan
                 cell.textContent = 'No results available for this race.'; cell.style.textAlign = 'center';
                 return;
             }
-            // individualRaceInfo.innerHTML = `<h3>Race ${race.raceNumber} Results</h3><p><strong>Entries:</strong> ${race.results.length}</p>`; // No text output
 
             const sortedResults = [...race.results].sort((a, b) => {
                 const posA = (typeof a.position === 'number') ? a.position : Infinity; const posB = (typeof b.position === 'number') ? b.position : Infinity; if (posA !== posB) return posA - posB; const pointsA = (a.points != null && !isNaN(a.points)) ? a.points : Infinity; const pointsB = (b.points != null && !isNaN(b.points)) ? b.points : Infinity; if (pointsA !== pointsB) return pointsA - pointsB; return a.sailNumber.localeCompare(b.sailNumber);
             });
             sortedResults.forEach(result => {
                 const row = individualRaceBody.insertRow();
-                row.innerHTML = `<td>${result.position ?? '-'}</td><td>${result.sailNumber}</td><td>${result.boatClass}</td><td>${result.skipper}</td><td>${result.yardstick}</td><td>${result.status.toUpperCase()}</td><td>${result.elapsedTime || '-'}</td><td>${result.correctedTime || '-'}</td><td>${result.points ?? '-'}</td>`;
+                let elapsedCellContent = result.elapsedTime || '-';
+                let correctedCellContent = result.correctedTime || '-';
+
+                if (result.status.toUpperCase() !== 'FINISHED') {
+                    elapsedCellContent = `<span class="status-in-elapsed">${result.status.toUpperCase()}</span>`;
+                    correctedCellContent = '-'; // Clear corrected time if not finished
+                }
+
+                row.innerHTML = `
+                    <td>${result.position ?? '-'}</td>
+                    <td>${result.sailNumber}</td>
+                    <td>${result.boatClass}</td>
+                    <td>${result.skipper}</td>
+                    <td>${result.yardstick}</td>
+                    <td>${elapsedCellContent}</td>
+                    <td>${correctedCellContent}</td>
+                    <td>${result.points ?? '-'}</td>`;
             });
         }
 
