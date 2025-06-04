@@ -435,7 +435,7 @@
                  seriesResultsHeader.innerHTML = ''; seriesResultsBody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No races defined for this series.</td></tr>'; return;
             }
 
-            let headerHTML = `<tr><th>Pos</th><th>Sail #</th><th>Skipper</th><th>Boat Class</th>`;
+            let headerHTML = `<tr><th>Pos</th><th>Sail #</th><th>Skipper</th><th>Class</th>`;
             raceNumbersInSeries.forEach(num => headerHTML += `<th>R${num}</th>`);
             headerHTML += `<th>Total</th><th>Net</th></tr>`;
             seriesResultsHeader.innerHTML = headerHTML;
