@@ -182,7 +182,7 @@
             /* Column widths for Individual Race Table on mobile */
             #individual-race-results th:nth-child(1), #individual-race-results td:nth-child(1) { min-width: 20px; text-align: center;} /* Pos */
             #individual-race-results th:nth-child(2), #individual-race-results td:nth-child(2) { min-width: 40px; } /* Sail No */
-            #individual-race-results th:nth-child(3), #individual-race-results td:nth-child(3) { min-width: 50px; } /* Boat Type */
+            #individual-race-results th:nth-child(3), #individual-race-results td:nth-child(3) { min-width: 50px; } /* Class */
             #individual-race-results th:nth-child(4), #individual-race-results td:nth-child(4) { min-width: 60px; } /* Helm */
             #individual-race-results th:nth-child(5), #individual-race-results td:nth-child(5) { min-width: 25px; text-align: center;} /* YS */
             /* Finish column is removed, so Elapsed is now 6th, Corrected 7th, Points 8th */
@@ -425,7 +425,7 @@
 
             const raceNumbersInSeries = selectedSeries.races.map(r => r.raceNumber).sort((a, b) => a - b);
              if (raceNumbersInSeries.length === 0 && !selectedSeries.isShortCourse && selectedSeries.numberOfRaces > 0) {
-                let headerHTML = `<tr><th>Pos</th><th>Sail #</th><th>Skipper</th><th>Boat Class</th>`;
+                let headerHTML = `<tr><th>Pos</th><th>Sail #</th><th>Skipper</th><th>Class</th>`;
                 for(let i=1; i<=selectedSeries.numberOfRaces; i++) headerHTML += `<th>R${i}</th>`;
                 headerHTML += `<th>Total</th><th>Net</th></tr>`;
                 seriesResultsHeader.innerHTML = headerHTML;
