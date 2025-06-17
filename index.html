@@ -15,10 +15,10 @@
         h1, h2, h3.section-title {
             color: #003366;
             text-align: center;
-        } 
+        }
         h3.section-title {
-            margin-top: 10px; 
-            margin-bottom: 5px; 
+            margin-top: 30px;
+            margin-bottom: 15px;
             font-size: 1.2em;
         }
         .container {
@@ -88,11 +88,7 @@
         .series-results-table td, .series-results-table th { white-space: nowrap; }
         .series-results-table .nr-cell { color: #999; font-style: italic; text-align: center; }
 
-        .individual-race-viewer-section {
-            margin-top: 25px;
-            border-top: 2px solid #003366;
-            padding-top: 5px; 
-        }
+        .individual-race-viewer-section { margin-top: 25px; border-top: 2px solid #003366; padding-top: 15px;}
         .race-selector { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; justify-content: center; }
         .race-selector button {
             padding: 5px 10px;
@@ -167,15 +163,15 @@
             .series-results-table th {
                 white-space: normal; font-size: 10px; padding: 3px 2px; word-break: break-word; vertical-align: top;
             }
-            .series-results-table th:nth-child(1), .series-results-table td:nth-child(1) { min-width: 20px; width:20px; text-align: center;} /* Pos */
-            .series-results-table th:nth-child(2), .series-results-table td:nth-child(2) { min-width: 35px; } /* Sail # */
-            .series-results-table th:nth-child(3), .series-results-table td:nth-child(3) { min-width: 55px; } /* Class (was Skipper) */
-            .series-results-table th:nth-child(4), .series-results-table td:nth-child(4) { min-width: 45px; } /* Skipper (was Class) */
+            .series-results-table th:nth-child(1), .series-results-table td:nth-child(1) { min-width: 20px; width:20px; text-align: center;}
+            .series-results-table th:nth-child(2), .series-results-table td:nth-child(2) { min-width: 35px; }
+            .series-results-table th:nth-child(3), .series-results-table td:nth-child(3) { min-width: 55px; }
+            .series-results-table th:nth-child(4), .series-results-table td:nth-child(4) { min-width: 45px; }
             .series-results-table th:nth-last-child(1), .series-results-table td:nth-last-child(1),
-            .series-results-table th:nth-last-child(2), .series-results-table td:nth-last-child(2) { min-width: 22px; width: 22px; text-align: center;} /* Total, Net */
+            .series-results-table th:nth-last-child(2), .series-results-table td:nth-last-child(2) { min-width: 22px; width: 22px; text-align: center;}
             .series-results-table th:nth-child(n+5):not(:nth-last-child(-n+2)),
             .series-results-table td:nth-child(n+5):not(:nth-last-child(-n+2)) {
-                min-width: 25px; text-align: center; padding: 3px 1px; /* Race columns */
+                min-width: 25px; text-align: center; padding: 3px 1px;
             }
             .series-results-table .nr-cell { font-size: 9px; }
 
@@ -186,12 +182,14 @@
             /* Column widths for Individual Race Table on mobile */
             #individual-race-results th:nth-child(1), #individual-race-results td:nth-child(1) { min-width: 20px; text-align: center;} /* Pos */
             #individual-race-results th:nth-child(2), #individual-race-results td:nth-child(2) { min-width: 40px; } /* Sail No */
-            #individual-race-results th:nth-child(3), #individual-race-results td:nth-child(3) { min-width: 50px; } /* Class */
-            #individual-race-results th:nth-child(4), #individual-race-results td:nth-child(4) { min-width: 60px; } /* Skipper */
+            #individual-race-results th:nth-child(3), #individual-race-results td:nth-child(3) { min-width: 50px; } /* Boat Type */
+            #individual-race-results th:nth-child(4), #individual-race-results td:nth-child(4) { min-width: 60px; } /* Helm */
             #individual-race-results th:nth-child(5), #individual-race-results td:nth-child(5) { min-width: 25px; text-align: center;} /* YS */
-            #individual-race-results th:nth-child(6), #individual-race-results td:nth-child(6) { min-width: 45px; text-align: center;} /* Elapsed */
-            #individual-race-results th:nth-child(7), #individual-race-results td:nth-child(7) { min-width: 45px; text-align: center;} /* Corrected */
-            #individual-race-results th:nth-child(8), #individual-race-results td:nth-child(8) { min-width: 25px; text-align: center;} /* Points */
+            /* Finish column is removed, so Elapsed is now 6th, Corrected 7th, Points 8th */
+            #individual-race-results th:nth-child(6), #individual-race-results td:nth-child(6) { min-width: 45px; text-align: center;} /* Elapsed (was Finish) */
+            #individual-race-results th:nth-child(7), #individual-race-results td:nth-child(7) { min-width: 45px; text-align: center;} /* Corrected (was Elapsed) */
+            #individual-race-results th:nth-child(8), #individual-race-results td:nth-child(8) { min-width: 25px; text-align: center;} /* Points (was Corrected) */
+            /* Points column used to be 9th, now 8th */
 
 
             .race-selector button { padding: 4px 8px; font-size: 10px; }
@@ -200,7 +198,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>Lysterfield Sailing Club Results</h1>
+        <h1>Sailing Club Results</h1>
 
         <div id="loading-message-container">
             <p id="loading-text">Loading results data from the cloud...</p>
@@ -235,7 +233,7 @@
                     <table id="individual-race-results" class="results-table">
                         <thead>
                              <!-- Finish column removed -->
-                             <tr><th>Pos</th><th>Sail No</th><th>Class</th><th>Skipper</th><th>YS</th><th>Elapsed</th><th>Corrected</th><th>Points</th></tr>
+                             <tr><th>Pos</th><th>Sail No</th><th>Boat Type</th><th>Helm</th><th>YS</th><th>Elapsed</th><th>Corrected</th><th>Points</th></tr>
                         </thead>
                         <tbody id="individual-race-body"></tbody>
                     </table>
@@ -301,7 +299,7 @@
                                 return r;
                             });
                             s.isShortCourse = typeof s.isShortCourse === 'boolean' ? s.isShortCourse : false;
-                            s.shortCourseSingleDiscardAfter5Races = typeof s.shortCourseSingleDiscardAfter5Races === 'boolean' ? s.shortCourseSingleDiscardAfter5Races : false;
+                            s.shortCourseSingleDiscardAfter5Races = typeof s.shortCourseSingleDiscardAfter5Races === 'boolean' ? s.shortCourseSingleDiscardAfter5Races : false; // Keep for data integrity but logic will use discardThreshold
                             s.numberOfRaces = typeof s.numberOfRaces === 'number' ? s.numberOfRaces : (s.isShortCourse ? s.races.length : 0);
                             s.discardThreshold = typeof s.discardThreshold === 'number' ? s.discardThreshold : 0;
                             s.dncScoringRule = ['raceEntries', 'seriesCompetitors'].includes(s.dncScoringRule) ? s.dncScoringRule : 'raceEntries';
@@ -407,18 +405,15 @@
 
             const racesWithResults = selectedSeries.races.filter(r => r.results && r.results.length > 0);
             const completedRacesCount = racesWithResults.length;
+            
+            // --- MODIFIED PART ---
             let numDiscardsToApply = 0;
+            const discardThreshold = selectedSeries.discardThreshold ?? 0; // Use the universal discardThreshold
 
-            if (selectedSeries.isShortCourse) {
-                if (selectedSeries.shortCourseSingleDiscardAfter5Races && completedRacesCount >= 5) {
-                    numDiscardsToApply = 1;
-                }
-            } else {
-                const discardThreshold = selectedSeries.discardThreshold ?? 0;
-                if (discardThreshold > 0 && completedRacesCount > 0) {
-                    numDiscardsToApply = Math.floor(completedRacesCount / discardThreshold);
-                }
+            if (discardThreshold > 0 && completedRacesCount > 0) {
+                numDiscardsToApply = Math.floor(completedRacesCount / discardThreshold);
             }
+            // --- END OF MODIFIED PART ---
 
             if (completedRacesCount === 0 && !(selectedSeries.isShortCourse && selectedSeries.races.length > 0) && selectedSeries.numberOfRaces === 0 && selectedSeries.races.length === 0) {
                 seriesResultsHeader.innerHTML = ''; seriesResultsBody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No races or results available for this series.</td></tr>'; return;
@@ -426,8 +421,7 @@
 
             const raceNumbersInSeries = selectedSeries.races.map(r => r.raceNumber).sort((a, b) => a - b);
              if (raceNumbersInSeries.length === 0 && !selectedSeries.isShortCourse && selectedSeries.numberOfRaces > 0) {
-                // Changed order: Class, Skipper
-                let headerHTML = `<tr><th>Pos</th><th>Sail #</th><th>Class</th><th>Skipper</th>`;
+                let headerHTML = `<tr><th>Pos</th><th>Sail #</th><th>Skipper</th><th>Boat Class</th>`;
                 for(let i=1; i<=selectedSeries.numberOfRaces; i++) headerHTML += `<th>R${i}</th>`;
                 headerHTML += `<th>Total</th><th>Net</th></tr>`;
                 seriesResultsHeader.innerHTML = headerHTML;
@@ -437,8 +431,7 @@
                  seriesResultsHeader.innerHTML = ''; seriesResultsBody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No races defined for this series.</td></tr>'; return;
             }
 
-            // Changed order: Class, Skipper
-            let headerHTML = `<tr><th>Pos</th><th>Sail #</th><th>Class</th><th>Skipper</th>`;
+            let headerHTML = `<tr><th>Pos</th><th>Sail #</th><th>Skipper</th><th>Boat Class</th>`;
             raceNumbersInSeries.forEach(num => headerHTML += `<th>R${num}</th>`);
             headerHTML += `<th>Total</th><th>Net</th></tr>`;
             seriesResultsHeader.innerHTML = headerHTML;
@@ -490,9 +483,7 @@
             else if (competitorsArray.length === 0 && completedRacesCount === 0 && selectedSeries.races.length > 0) { seriesResultsBody.innerHTML = `<tr><td colspan="${raceNumbersInSeries.length + 6}" style="text-align:center;">Results not yet entered for races in this series.</td></tr>`;}
 
             competitorsArray.forEach(competitor => {
-                const row = seriesResultsBody.insertRow();
-                // Changed order: competitor.boatClass, competitor.skipper
-                let rowHTML = `<td>${competitor.position}</td><td>${competitor.sailNumber}</td><td>${competitor.boatClass}</td><td>${competitor.skipper}</td>`;
+                const row = seriesResultsBody.insertRow(); let rowHTML = `<td>${competitor.position}</td><td>${competitor.sailNumber}</td><td>${competitor.skipper}</td><td>${competitor.boatClass}</td>`;
                 raceNumbersInSeries.forEach(raceNum => {
                     const score = competitor.raceScores.get(raceNum);
                     if (!score || score.status === 'NR') { rowHTML += `<td class="nr-cell" title="No Race / Not Sailed">NR</td>`; }
