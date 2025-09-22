@@ -30,25 +30,39 @@
 
         .series-select-main {
             margin-bottom: 20px;
-            text-align: center;
         }
-        .series-select-main label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: bold;
-            color: #003366;
-            font-size: 1.1em;
+        .series-select-main .section-title {
+            text-align: left;
+            margin-top: 0;
+            margin-bottom: 10px;
         }
-        .series-select-main select {
-            width: auto;
-            min-width: 250px;
-            max-width: 90%;
-            padding: 10px;
+        
+        #series-list {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
             border: 1px solid #ddd;
             border-radius: 4px;
-            box-sizing: border-box;
-            font-size: 1em;
+            background-color: #fff;
         }
+        #series-list li {
+            padding: 10px 15px;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        #series-list li:last-child {
+            border-bottom: none;
+        }
+        #series-list li:hover {
+            background-color: #e8f4ff;
+        }
+        #series-list li.active {
+            background-color: #003366;
+            color: white;
+            font-weight: bold;
+        }
+
 
         .results-table {
             width: 100%;
@@ -198,17 +212,17 @@
 </head>
 <body>
     <div class="container">
-        <h1>Sailing Club Results</h1>
+        <h1>Lysterfield Sailing Club Results</h1>
 
         <div id="loading-message-container">
-            <p id="loading-text">Loading results data from the cloud...</p>
+            <p id="loading-text">Loading results from the tower, please wait...</p>
             <div class="loading-spinner"></div>
         </div>
 
         <div id="results-content" class="hidden-content">
             <div class="series-select-main">
-                <label for="series-selector-main">Select Series:</label>
-                <select id="series-selector-main"></select>
+                <h3 class="section-title">Select Series:</h3>
+                <ul id="series-list"></ul>
             </div>
 
             <div id="series-results-section">
@@ -221,7 +235,7 @@
                     </table>
                 </div>
                 <div id="series-placeholder-message" class="placeholder-message hidden-content">
-                    Please select a series from the dropdown above to view standings.
+                    Please select a series from the list above to view standings.
                 </div>
             </div>
 
@@ -251,7 +265,7 @@
         let seriesDataGlobal = [];
         let currentSelectedSeries = null;
 
-        const seriesSelectorMain = document.getElementById('series-selector-main');
+        const seriesList = document.getElementById('series-list');
         const seriesResultsBody = document.getElementById('series-results-body');
         const seriesResultsHeader = document.getElementById('series-results-header');
         const seriesSummary = document.getElementById('series-summary');
@@ -263,7 +277,6 @@
         const loadingText = document.getElementById('loading-text');
         const resultsContent = document.getElementById('results-content');
 
-        // New selectors for table containers and placeholder messages
         const seriesTableContainer = document.getElementById('series-table-container');
         const seriesPlaceholderMessage = document.getElementById('series-placeholder-message');
         const individualRaceTableContainer = document.getElementById('individual-race-table-container');
@@ -327,23 +340,26 @@
 
                     loadingMessageContainer.style.display = 'none';
                     resultsContent.classList.remove('hidden-content');
-                    populateMainSeriesSelector();
+                    populateSeriesList();
 
                     if (seriesDataGlobal.length === 0) {
-                        // No series data available at all
-                        seriesSelectorMain.disabled = true;
                         seriesTableContainer.style.display = 'none';
                         seriesPlaceholderMessage.textContent = 'No series data found in the cloud.';
                         seriesPlaceholderMessage.classList.remove('hidden-content');
                         
                         individualRaceTableContainer.style.display = 'none';
-                        raceSelector.innerHTML = ''; // Clear race buttons
+                        raceSelector.innerHTML = ''; 
                         racePlaceholderMessage.textContent = 'No series data available to select races.';
                         racePlaceholderMessage.classList.remove('hidden-content');
                     } else {
-                        // Series data exists, set to default "select a series" state
-                        seriesSelectorMain.selectedIndex = 0;
-                        handleSeriesSelectionChange(); // This will show "Please select a series..."
+                        // Set initial state: no series selected, show placeholders
+                        seriesTableContainer.style.display = 'none';
+                        seriesPlaceholderMessage.textContent = 'Please select a series from the list to view standings.';
+                        seriesPlaceholderMessage.classList.remove('hidden-content');
+
+                        individualRaceTableContainer.style.display = 'none';
+                        racePlaceholderMessage.textContent = 'Please select a series first to see individual race options.';
+                        racePlaceholderMessage.classList.remove('hidden-content');
                     }
                 } else { throw new Error(data.message || "Unknown error from script."); }
             } catch (error) {
@@ -352,23 +368,36 @@
             }
         }
 
-        function populateMainSeriesSelector() {
-            seriesSelectorMain.innerHTML = '<option value="">-- Select a Series --</option>';
+        function populateSeriesList() {
+            seriesList.innerHTML = '';
             seriesDataGlobal.sort((a, b) => a.name.localeCompare(b.name));
             seriesDataGlobal.forEach(s => {
-                const option = document.createElement('option');
-                option.value = s.id;
-                option.textContent = s.name + (s.isShortCourse ? ' (Short Course)' : '');
-                seriesSelectorMain.appendChild(option);
+                const listItem = document.createElement('li');
+                listItem.dataset.seriesId = s.id;
+                listItem.textContent = s.name + (s.isShortCourse ? ' (Short Course)' : '');
+                listItem.addEventListener('click', handleSeriesSelection);
+                seriesList.appendChild(listItem);
             });
         }
+        
+        function handleSeriesSelection(event) {
+            const currentActive = document.querySelector('#series-list li.active');
+            if (currentActive) {
+                currentActive.classList.remove('active');
+            }
 
-        function handleSeriesSelectionChange() {
-            const selectedSeriesId = seriesSelectorMain.value;
+            const clickedItem = event.target;
+            clickedItem.classList.add('active');
+            const selectedSeriesId = clickedItem.dataset.seriesId;
+            
+            displayResultsForSeries(selectedSeriesId);
+        }
+
+        function displayResultsForSeries(selectedSeriesId) {
              seriesSummary.innerHTML = '';
              individualRaceInfo.innerHTML = '';
 
-            if (!selectedSeriesId) { // No series selected (default option)
+            if (!selectedSeriesId) { 
                 seriesResultsHeader.innerHTML = '';
                 seriesResultsBody.innerHTML = '';
                 raceSelector.innerHTML = '';
@@ -376,7 +405,7 @@
                 currentSelectedSeries = null;
 
                 seriesTableContainer.style.display = 'none';
-                seriesPlaceholderMessage.textContent = 'Please select a series from the dropdown above to view standings.';
+                seriesPlaceholderMessage.textContent = 'Please select a series from the list above to view standings.';
                 seriesPlaceholderMessage.classList.remove('hidden-content');
 
                 individualRaceTableContainer.style.display = 'none';
@@ -385,10 +414,9 @@
                 return;
             }
             
-            // A series is selected
-            seriesTableContainer.style.display = 'block'; // or 'initial' or '' based on original CSS
+            seriesTableContainer.style.display = 'block';
             seriesPlaceholderMessage.classList.add('hidden-content');
-            individualRaceTableContainer.style.display = 'block'; // or 'initial' or ''
+            individualRaceTableContainer.style.display = 'block'; 
             racePlaceholderMessage.classList.add('hidden-content');
 
             currentSelectedSeries = seriesDataGlobal.find(s => String(s.id) === selectedSeriesId);
@@ -406,14 +434,12 @@
             const racesWithResults = selectedSeries.races.filter(r => r.results && r.results.length > 0);
             const completedRacesCount = racesWithResults.length;
             
-            // --- MODIFIED PART ---
             let numDiscardsToApply = 0;
-            const discardThreshold = selectedSeries.discardThreshold ?? 0; // Use the universal discardThreshold
+            const discardThreshold = selectedSeries.discardThreshold ?? 0;
 
             if (discardThreshold > 0 && completedRacesCount > 0) {
                 numDiscardsToApply = Math.floor(completedRacesCount / discardThreshold);
             }
-            // --- END OF MODIFIED PART ---
 
             if (completedRacesCount === 0 && !(selectedSeries.isShortCourse && selectedSeries.races.length > 0) && selectedSeries.numberOfRaces === 0 && selectedSeries.races.length === 0) {
                 seriesResultsHeader.innerHTML = ''; seriesResultsBody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No races or results available for this series.</td></tr>'; return;
@@ -524,8 +550,8 @@
             const raceNumbersToShow = selectedSeries.races.map(r => r.raceNumber).sort((a, b) => a - b);
             if (raceNumbersToShow.length === 0) {
                 raceSelector.innerHTML = '<p style="text-align:center; width:100%;">No races found in this series.</p>';
-                individualRaceTableContainer.style.display = 'block'; // Show table container even if empty
-                racePlaceholderMessage.classList.add('hidden-content'); // Hide placeholder
+                individualRaceTableContainer.style.display = 'block'; 
+                racePlaceholderMessage.classList.add('hidden-content');
                 const row = individualRaceBody.insertRow(); const cell = row.insertCell(); cell.colSpan = 8;
                 cell.textContent = 'No races defined for this series.'; cell.style.textAlign = 'center';
                 return;
@@ -560,8 +586,8 @@
                 raceSelector.appendChild(raceBtn);
             });
             
-            individualRaceTableContainer.style.display = 'block'; // Ensure table container is visible
-            racePlaceholderMessage.classList.add('hidden-content'); // Hide placeholder
+            individualRaceTableContainer.style.display = 'block';
+            racePlaceholderMessage.classList.add('hidden-content'); 
 
             if (lastRaceWithResultsNum !== -1) {
                 displayIndividualRaceResults(selectedSeries, lastRaceWithResultsNum);
@@ -570,11 +596,11 @@
                 if (firstButton) {
                     firstButton.classList.add('active');
                     displayIndividualRaceResults(selectedSeries, parseInt(firstButton.dataset.raceNumber));
-                } else { // Should not happen if raceNumbersToShow.length > 0 but as a fallback
+                } else {
                      const row = individualRaceBody.insertRow(); const cell = row.insertCell(); cell.colSpan = 8;
                      cell.textContent = 'Select a race to view results.'; cell.style.textAlign = 'center';
                 }
-            } else { // No races to show, already handled above, but for safety
+            } else {
                  const row = individualRaceBody.insertRow(); const cell = row.insertCell(); cell.colSpan = 8;
                  cell.textContent = 'No races available for this series.'; cell.style.textAlign = 'center';
             }
@@ -618,7 +644,6 @@
             });
         }
 
-        seriesSelectorMain.addEventListener('change', handleSeriesSelectionChange);
         document.addEventListener('DOMContentLoaded', loadDataFromGoogleSheet);
 
     </script>
