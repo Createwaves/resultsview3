@@ -474,12 +474,16 @@
                 const raceNum = race.raceNumber; if (race.results && race.results.length > 0) { race.results.forEach(result => { const competitor = competitors.get(result.sailNumber); if (competitor) competitor.raceScores.set(raceNum, { points: result.points, status: result.status.toUpperCase(), position: result.position, discarded: false }); });}
             });
             competitors.forEach(competitor => {
-                  const dncRule = selectedSeries.dncScoringRule || 'raceEntries'; const totalSeriesCompetitors = competitors.size;
                   raceNumbersInSeries.forEach(raceNum => {
                       if (!competitor.raceScores.has(raceNum)) {
                           const correspondingRace = selectedSeries.races.find(r => r.raceNumber === raceNum);
                           if (correspondingRace && correspondingRace.results && correspondingRace.results.length > 0) {
-                              let dncPoints; if (dncRule === 'raceEntries') { const numEntriesInRace = correspondingRace.results.length; dncPoints = numEntriesInRace + 1; } else { dncPoints = totalSeriesCompetitors + 1; }
+                              // *** UPDATED DNC LOGIC STARTS HERE ***
+                              // Count starters in the race, excluding OOD status
+                              const startersInRace = correspondingRace.results.filter(r => r.status.toUpperCase() !== 'OOD').length;
+                              // DNC points are starters + 2
+                              const dncPoints = startersInRace + 2;
+                              // *** UPDATED DNC LOGIC ENDS HERE ***
                               competitor.raceScores.set(raceNum, { points: dncPoints, status: 'DNC', position: 'DNC', discarded: false });
                           } else { competitor.raceScores.set(raceNum, { points: null, status: 'NR', position: 'NR', discarded: false }); }
                       }
