@@ -86,6 +86,9 @@
             margin-top: 10px;
             font-size: 14px;
         }
+        .results-output-container {
+            overflow-x: auto; /* <-- FIX: This is the added line to enable horizontal scrolling on wide tables */
+        }
         .results-output-container .results-table {
             margin-bottom: 25px; /* Add space between division tables */
         }
@@ -456,7 +459,7 @@
                  return;
             }
 
-            const allDivisions = [...new Set(racesWithResults.flatMap(r => r.results.map(res => String(res.division || '1'))))].sort(); // <-- FIX
+            const allDivisions = [...new Set(racesWithResults.flatMap(r => r.results.map(res => String(res.division || '1'))))].sort();
 
             allDivisions.forEach(division => {
                 const divisionHeader = document.createElement('h2');
@@ -656,7 +659,7 @@
                 return;
             }
 
-            const allDivisions = [...new Set(race.results.map(r => String(r.division || '1')))].sort(); // <-- FIX
+            const allDivisions = [...new Set(race.results.map(r => String(r.division || '1')))].sort();
 
             allDivisions.forEach(division => {
                  const divisionResults = race.results
