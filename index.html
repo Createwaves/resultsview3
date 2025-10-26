@@ -456,7 +456,7 @@
                  return;
             }
 
-            const allDivisions = [...new Set(racesWithResults.flatMap(r => r.results.map(res => res.division || '1')))].sort();
+            const allDivisions = [...new Set(racesWithResults.flatMap(r => r.results.map(res => String(res.division || '1'))))].sort(); // <-- FIX
 
             allDivisions.forEach(division => {
                 const divisionHeader = document.createElement('h2');
@@ -656,7 +656,7 @@
                 return;
             }
 
-            const allDivisions = [...new Set(race.results.map(r => r.division || '1'))].sort();
+            const allDivisions = [...new Set(race.results.map(r => String(r.division || '1')))].sort(); // <-- FIX
 
             allDivisions.forEach(division => {
                  const divisionResults = race.results
