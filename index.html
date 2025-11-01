@@ -662,11 +662,21 @@
             const allDivisions = [...new Set(race.results.map(r => String(r.division || '1')))].sort();
 
             allDivisions.forEach(division => {
-                 const divisionResults = race.results
+                 const divisionResultsRaw = race.results
                     .filter(r => (r.division || '1') == division)
                     .sort((a,b) => (a.position || Infinity) - (b.position || Infinity));
 
-                if (divisionResults.length === 0) return;
+                if (divisionResultsRaw.length === 0) return;
+
+                const seenCompetitors = new Set();
+                const divisionResults = divisionResultsRaw.filter(result => {
+                    const competitorKey = `${result.sailNumber}-${result.skipper}`;
+                    if (seenCompetitors.has(competitorKey)) {
+                        return false; // It's a duplicate, filter it out
+                    }
+                    seenCompetitors.add(competitorKey);
+                    return true; // It's unique, keep it
+                });
 
                 const divisionHeader = document.createElement('h3');
                 divisionHeader.classList.add('division-results-header');
