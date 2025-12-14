@@ -176,6 +176,22 @@
             color: #555;
             text-align: center;
         }
+        
+        .race-view-toggle {
+            padding: 5px 12px;
+            font-size: 13px;
+            background-color: #f2f2f2;
+            color: #333;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+        .race-view-toggle.active {
+            background-color: #28a745;
+            color: white;
+            border-color: #218838;
+        }
 
 
         @media (max-width: 768px) {
@@ -260,6 +276,9 @@
 
             <div id="individual-race-viewer-section" class="individual-race-viewer-section">
                 <h3 class="section-title">Individual Race Results</h3>
+                <div style="text-align:center; margin-bottom:10px;">
+                    <button id="toggle-elapsed-view-btn" class="race-view-toggle">View by Elapsed Time</button>
+                </div>
                 <div class="race-selector"></div>
                 <div id="individual-race-info"></div>
                 <div id="individual-race-table-container" class="results-output-container">
@@ -277,6 +296,7 @@
 
         let seriesDataGlobal = [];
         let currentSelectedSeries = null;
+        let isElapsedViewActive = false;
 
         const seriesList = document.getElementById('series-list');
         const seriesTableContainer = document.getElementById('series-table-container');
@@ -672,43 +692,90 @@
                 const divisionResults = divisionResultsRaw.filter(result => {
                     const competitorKey = `${result.sailNumber}-${result.skipper}`;
                     if (seenCompetitors.has(competitorKey)) {
-                        return false; // It's a duplicate, filter it out
+                        return false; 
                     }
                     seenCompetitors.add(competitorKey);
-                    return true; // It's unique, keep it
+                    return true;
                 });
 
                 const divisionHeader = document.createElement('h3');
                 divisionHeader.classList.add('division-results-header');
-                divisionHeader.textContent = `Race ${raceNumber} - Div ${division}`;
                 individualRaceTableContainer.appendChild(divisionHeader);
 
                 const table = document.createElement('table');
                 table.classList.add('results-table', 'individual-race-table');
-                table.innerHTML = `
-                    <thead><tr><th>Pos</th><th>Sail No</th><th>Boat Type</th><th>Helm</th><th>YS</th><th>Elapsed</th><th>Corrected</th><th>Points</th></tr></thead>
-                    <tbody></tbody>`;
                 
-                const tbody = table.querySelector('tbody');
+                if (isElapsedViewActive) {
+                    divisionHeader.textContent = `Race ${raceNumber} - Div ${division} (By Elapsed Time)`;
+                    table.innerHTML = `
+                        <thead><tr><th>Pos</th><th>Sail No</th><th>Boat Type</th><th>Helm</th><th>YS</th><th>Elapsed</th><th>Status</th></tr></thead>
+                        <tbody></tbody>`;
+                    const tbody = table.querySelector('tbody');
 
-                divisionResults.forEach(result => {
-                    const row = tbody.insertRow();
-                    let elapsedCellContent = result.elapsedTime || '-';
-                    let correctedCellContent = result.correctedTime || '-';
-                    if (result.status.toUpperCase() !== 'FINISHED') {
-                        elapsedCellContent = `<span class="status-in-elapsed">${result.status.toUpperCase()}</span>`;
-                        correctedCellContent = '-';
-                    }
-                    row.innerHTML = `
-                        <td>${result.position ?? '-'}</td><td>${result.sailNumber}</td><td>${result.boatClass}</td><td>${result.skipper}</td>
-                        <td>${result.yardstick}</td><td>${elapsedCellContent}</td><td>${correctedCellContent}</td><td>${result.points ?? '-'}</td>`;
-                });
+                    const finishers = divisionResults
+                        .filter(r => r.status.toUpperCase() === 'FINISHED' && r.elapsedTime)
+                        .sort((a, b) => a.elapsedTime.localeCompare(b.elapsedTime));
+                    
+                    const nonFinishers = divisionResults
+                        .filter(r => r.status.toUpperCase() !== 'FINISHED' || !r.elapsedTime)
+                        .sort((a,b) => (a.position || Infinity) - (b.position || Infinity));
 
+                    let pos = 1;
+                    finishers.forEach(result => {
+                        const row = tbody.insertRow();
+                        row.innerHTML = `
+                            <td>${pos++}</td><td>${result.sailNumber}</td><td>${result.boatClass}</td><td>${result.skipper}</td>
+                            <td>${result.yardstick}</td><td>${result.elapsedTime}</td><td>Finished</td>`;
+                    });
+
+                    nonFinishers.forEach(result => {
+                        const row = tbody.insertRow();
+                        const statusDisplay = result.status.toUpperCase();
+                        row.innerHTML = `
+                            <td>${statusDisplay}</td><td>${result.sailNumber}</td><td>${result.boatClass}</td><td>${result.skipper}</td>
+                            <td>${result.yardstick}</td><td>-</td><td>${statusDisplay}</td>`;
+                    });
+
+                } else {
+                    divisionHeader.textContent = `Race ${raceNumber} - Div ${division}`;
+                    table.innerHTML = `
+                        <thead><tr><th>Pos</th><th>Sail No</th><th>Boat Type</th><th>Helm</th><th>YS</th><th>Elapsed</th><th>Corrected</th><th>Points</th></tr></thead>
+                        <tbody></tbody>`;
+                    
+                    const tbody = table.querySelector('tbody');
+
+                    divisionResults.forEach(result => {
+                        const row = tbody.insertRow();
+                        let elapsedCellContent = result.elapsedTime || '-';
+                        let correctedCellContent = result.correctedTime || '-';
+                        if (result.status.toUpperCase() !== 'FINISHED') {
+                            elapsedCellContent = `<span class="status-in-elapsed">${result.status.toUpperCase()}</span>`;
+                            correctedCellContent = '-';
+                        }
+                        row.innerHTML = `
+                            <td>${result.position ?? '-'}</td><td>${result.sailNumber}</td><td>${result.boatClass}</td><td>${result.skipper}</td>
+                            <td>${result.yardstick}</td><td>${elapsedCellContent}</td><td>${correctedCellContent}</td><td>${result.points ?? '-'}</td>`;
+                    });
+                }
                 individualRaceTableContainer.appendChild(table);
             });
         }
 
-        document.addEventListener('DOMContentLoaded', loadDataFromGoogleSheet);
+        document.addEventListener('DOMContentLoaded', () => {
+            loadDataFromGoogleSheet();
+            const toggleBtn = document.getElementById('toggle-elapsed-view-btn');
+            toggleBtn.addEventListener('click', () => {
+                isElapsedViewActive = !isElapsedViewActive;
+                toggleBtn.textContent = isElapsedViewActive ? 'View by Corrected Time (Official)' : 'View by Elapsed Time';
+                toggleBtn.classList.toggle('active');
+
+                const activeRaceButton = document.querySelector('.race-selector .race-button.active');
+                if (currentSelectedSeries && activeRaceButton) {
+                    const raceNum = activeRaceButton.dataset.raceNumber;
+                    displayIndividualRaceResults(currentSelectedSeries, raceNum);
+                }
+            });
+        });
 
     </script>
 </body>
