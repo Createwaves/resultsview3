@@ -87,10 +87,10 @@
             font-size: 14px;
         }
         .results-output-container {
-            overflow-x: auto; /* <-- FIX: This is the added line to enable horizontal scrolling on wide tables */
+            overflow-x: auto;
         }
         .results-output-container .results-table {
-            margin-bottom: 25px; /* Add space between division tables */
+            margin-bottom: 25px;
         }
         .results-table th {
             background-color: #003366;
@@ -237,11 +237,9 @@
             .individual-race-table th:nth-child(3), .individual-race-table td:nth-child(3) { min-width: 50px; } /* Boat Type */
             .individual-race-table th:nth-child(4), .individual-race-table td:nth-child(4) { min-width: 60px; } /* Helm */
             .individual-race-table th:nth-child(5), .individual-race-table td:nth-child(5) { min-width: 25px; text-align: center;} /* YS */
-            /* Finish column is removed, so Elapsed is now 6th, Corrected 7th, Points 8th */
-            .individual-race-table th:nth-child(6), .individual-race-table td:nth-child(6) { min-width: 45px; text-align: center;} /* Elapsed (was Finish) */
-            .individual-race-table th:nth-child(7), .individual-race-table td:nth-child(7) { min-width: 45px; text-align: center;} /* Corrected (was Elapsed) */
-            .individual-race-table th:nth-child(8), .individual-race-table td:nth-child(8) { min-width: 25px; text-align: center;} /* Points (was Corrected) */
-            /* Points column used to be 9th, now 8th */
+            .individual-race-table th:nth-child(6), .individual-race-table td:nth-child(6) { min-width: 45px; text-align: center;} /* Elapsed */
+            .individual-race-table th:nth-child(7), .individual-race-table td:nth-child(7) { min-width: 45px; text-align: center;} /* Corrected */
+            .individual-race-table th:nth-child(8), .individual-race-table td:nth-child(8) { min-width: 25px; text-align: center;} /* Points */
 
 
             .race-selector button { padding: 4px 8px; font-size: 10px; }
@@ -259,8 +257,14 @@
 
         <div id="results-content" class="hidden-content">
             <div class="series-select-main">
-                <h3 class="section-title">Select Series:</h3>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
+                    <h3 class="section-title" style="margin: 0;">Select Series:</h3>
+                    <button id="toggle-archive-btn" class="race-view-toggle">View Archived Results</button>
+                </div>
                 <ul id="series-list"></ul>
+                <div id="archived-mode-banner" style="display:none; margin-top:8px; padding:7px 12px; background:#fff3cd; border:1px solid #ffeeba; border-radius:4px; font-size:13px; color:#856404;">
+                    Viewing archived series. Click "View Active Results" to return.
+                </div>
             </div>
 
             <div id="series-results-section">
@@ -292,11 +296,12 @@
     </div>
 
     <script>
-        const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyTHgUnij7DiwsbKiA7jjNHjNohNfxXW9mtJpkt4XlDrlAXpGoaT4JLeEfSkwcosJHXcw/exec';
+        const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxOlDodRAojpQVEB2Qlhdiw0kvO142WqSbaZ2ldLaPo2IZSZqtfXdbVdmykWizqVGsq/exec';
 
         let seriesDataGlobal = [];
         let currentSelectedSeries = null;
         let isElapsedViewActive = false;
+        let showArchived = false; // Tracks if we are viewing active or archived series
 
         const seriesList = document.getElementById('series-list');
         const seriesTableContainer = document.getElementById('series-table-container');
@@ -311,7 +316,7 @@
 
         const seriesPlaceholderMessage = document.getElementById('series-placeholder-message');
         const racePlaceholderMessage = document.getElementById('race-placeholder-message');
-
+        const toggleArchiveBtn = document.getElementById('toggle-archive-btn');
 
         function pluralize(count, singular, plural = null) { return count === 1 ? singular : (plural || singular + 's'); }
 
@@ -342,6 +347,7 @@
                                 return r;
                             });
                             s.isShortCourse = typeof s.isShortCourse === 'boolean' ? s.isShortCourse : false;
+                            s.isArchived = typeof s.isArchived === 'boolean' ? s.isArchived : false; // Standardize isArchived flag
                             s.numberOfRaces = typeof s.numberOfRaces === 'number' ? s.numberOfRaces : (s.isShortCourse ? s.races.length : 0);
                             s.discardThreshold = typeof s.discardThreshold === 'number' ? s.discardThreshold : 0;
                             delete s.shortCourseSingleDiscardAfter5Races;
@@ -383,7 +389,6 @@
                         racePlaceholderMessage.textContent = 'No series data available to select races.';
                         racePlaceholderMessage.classList.remove('hidden-content');
                     } else {
-                        // Set initial state: no series selected, show placeholders
                         seriesTableContainer.style.display = 'none';
                         seriesPlaceholderMessage.textContent = 'Please select a series from the list above to view standings.';
                         seriesPlaceholderMessage.classList.remove('hidden-content');
@@ -402,10 +407,30 @@
         function populateSeriesList() {
             seriesList.innerHTML = '';
             seriesDataGlobal.sort((a, b) => a.name.localeCompare(b.name));
-            seriesDataGlobal.forEach(s => {
+
+            // Filter series based on current toggle state
+            const filteredSeries = seriesDataGlobal.filter(s => {
+                const isArchived = s.isArchived || false;
+                return showArchived ? isArchived : !isArchived;
+            });
+
+            if (filteredSeries.length === 0) {
+                const placeholderLi = document.createElement('li');
+                placeholderLi.textContent = showArchived ? 'No archived series found.' : 'No active series found.';
+                placeholderLi.style.cursor = 'default';
+                placeholderLi.style.fontStyle = 'italic';
+                placeholderLi.style.color = '#666';
+                seriesList.appendChild(placeholderLi);
+                return;
+            }
+
+            filteredSeries.forEach(s => {
                 const listItem = document.createElement('li');
                 listItem.dataset.seriesId = s.id;
                 listItem.textContent = s.name + (s.isShortCourse ? ' (Short Course)' : '');
+                if (currentSelectedSeries && String(currentSelectedSeries.id) === String(s.id)) {
+                    listItem.classList.add('active');
+                }
                 listItem.addEventListener('click', handleSeriesSelection);
                 seriesList.appendChild(listItem);
             });
@@ -457,7 +482,7 @@
         }
 
        function displaySeriesResults(selectedSeries) {
-            seriesTableContainer.innerHTML = ''; // Clear container for all divisions
+            seriesTableContainer.innerHTML = '';
             seriesSummary.innerHTML = '';
 
             const racesWithResults = selectedSeries.races.filter(r => r.results && r.results.length > 0);
@@ -764,6 +789,19 @@
         document.addEventListener('DOMContentLoaded', () => {
             loadDataFromGoogleSheet();
             const toggleBtn = document.getElementById('toggle-elapsed-view-btn');
+            
+            // Set up show/hide archive click logic
+            if (toggleArchiveBtn) {
+                toggleArchiveBtn.addEventListener('click', () => {
+                    showArchived = !showArchived;
+                    toggleArchiveBtn.textContent = showArchived ? 'View Active Results' : 'View Archived Results';
+                    toggleArchiveBtn.classList.toggle('active', showArchived);
+                    const banner = document.getElementById('archived-mode-banner');
+                    if (banner) banner.style.display = showArchived ? 'block' : 'none';
+                    populateSeriesList();
+                });
+            }
+
             toggleBtn.addEventListener('click', () => {
                 isElapsedViewActive = !isElapsedViewActive;
                 toggleBtn.textContent = isElapsedViewActive ? 'View by Corrected Time (Official)' : 'View by Elapsed Time';
