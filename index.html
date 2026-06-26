@@ -280,8 +280,10 @@
 
             <div id="individual-race-viewer-section" class="individual-race-viewer-section">
                 <h3 class="section-title">Individual Race Results</h3>
-                <div style="text-align:center; margin-bottom:10px;">
-                    <button id="toggle-elapsed-view-btn" class="race-view-toggle">View by Elapsed Time</button>
+                <div style="text-align:center; margin-bottom:10px; display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+                    <button id="btn-view-yardstick" class="race-view-toggle active">Yardstick</button>
+                    <button id="btn-view-phs" class="race-view-toggle">PHS</button>
+                    <button id="btn-view-elapsed" class="race-view-toggle">Elapsed Time</button>
                 </div>
                 <div class="race-selector"></div>
                 <div id="individual-race-info"></div>
@@ -301,6 +303,7 @@
         let seriesDataGlobal = [];
         let currentSelectedSeries = null;
         let isElapsedViewActive = false;
+        let isPhsViewActive = false;
         let showArchived = false; // Tracks if we are viewing active or archived series
 
         const seriesList = document.getElementById('series-list');
@@ -347,8 +350,9 @@
                                 return r;
                             });
                             s.isShortCourse = typeof s.isShortCourse === 'boolean' ? s.isShortCourse : false;
-                            s.isArchived = typeof s.isArchived === 'boolean' ? s.isArchived : false; // Standardize isArchived flag
-                            s.numberOfRaces = typeof s.numberOfRaces === 'number' ? s.numberOfRaces : (s.isShortCourse ? s.races.length : 0);
+                            s.isPursuitRace = typeof s.isPursuitRace === 'boolean' ? s.isPursuitRace : false;
+                            s.isArchived = typeof s.isArchived === 'boolean' ? s.isArchived : false;
+                            s.numberOfRaces = typeof s.numberOfRaces === 'number' ? s.numberOfRaces : ((s.isShortCourse || s.isPursuitRace) ? s.races.length : 0);
                             s.discardThreshold = typeof s.discardThreshold === 'number' ? s.discardThreshold : 0;
                             delete s.shortCourseSingleDiscardAfter5Races;
                             delete s.dncScoringRule;
@@ -427,7 +431,7 @@
             filteredSeries.forEach(s => {
                 const listItem = document.createElement('li');
                 listItem.dataset.seriesId = s.id;
-                listItem.textContent = s.name + (s.isShortCourse ? ' (Short Course)' : '');
+                listItem.textContent = s.name + (s.isShortCourse ? ' (Short Course)' : s.isPursuitRace ? ' (Pursuit Race)' : '');
                 if (currentSelectedSeries && String(currentSelectedSeries.id) === String(s.id)) {
                     listItem.classList.add('active');
                 }
@@ -452,6 +456,12 @@
         function displayResultsForSeries(selectedSeriesId) {
              seriesSummary.innerHTML = '';
              individualRaceInfo.innerHTML = '';
+             // Reset view toggles on series change — default to Yardstick
+             isElapsedViewActive = false;
+             isPhsViewActive = false;
+             document.getElementById('btn-view-yardstick')?.classList.add('active');
+             document.getElementById('btn-view-phs')?.classList.remove('active');
+             document.getElementById('btn-view-elapsed')?.classList.remove('active');
 
             if (!selectedSeriesId) { 
                 seriesTableContainer.innerHTML = '';
@@ -485,6 +495,17 @@
             seriesTableContainer.innerHTML = '';
             seriesSummary.innerHTML = '';
 
+            const isPursuit = selectedSeries.isPursuitRace || false;
+            const scoreTypeBtn2 = document.getElementById('toggle-score-type-btn');
+            // Hide PHS button for pursuit races
+            const phsBtn = document.getElementById('btn-view-phs');
+            if (phsBtn) phsBtn.style.display = isPursuit ? 'none' : '';
+
+            if (isPursuit) {
+                displayPursuitSeriesResults(selectedSeries);
+                return;
+            }
+
             const racesWithResults = selectedSeries.races.filter(r => r.results && r.results.length > 0);
             const completedRacesCount = racesWithResults.length;
             
@@ -509,7 +530,6 @@
             allDivisions.forEach(division => {
                 const divisionHeader = document.createElement('h2');
                 divisionHeader.classList.add('division-results-header');
-                divisionHeader.textContent = `Div ${division} - Overall Standings`;
                 seriesTableContainer.appendChild(divisionHeader);
 
                 const table = document.createElement('table');
@@ -529,6 +549,8 @@
                 }
 
                 const raceNumbersInSeries = selectedSeries.races.map(r => r.raceNumber).sort((a, b) => a - b);
+                const seriesScoreLabel = isPhsViewActive ? ' (PHS)' : ' (Yardstick)';
+                divisionHeader.textContent = `Div ${division} - Overall Standings${seriesScoreLabel}`;
                 let headerHTML = `<tr><th>Pos</th><th>Sail #</th><th>Skipper</th><th>Boat Class</th>`;
                 raceNumbersInSeries.forEach(num => headerHTML += `<th>R${num}</th>`);
                 headerHTML += `<th>Total</th><th>Net</th></tr>`;
@@ -555,7 +577,32 @@
                         const scoreData = raceData ? raceData.results.find(r => r.sailNumber === competitor.sailNumber && r.skipper === competitor.skipper) : null;
 
                         if (scoreData) {
-                             competitor.raceScores.set(raceNum, { points: scoreData.points, status: scoreData.status.toUpperCase(), position: scoreData.position, discarded: false });
+                             const status = scoreData.status.toUpperCase();
+                             let pts = isPhsViewActive ? (scoreData.phsPoints ?? scoreData.points) : scoreData.points;
+                             let posn = isPhsViewActive ? (scoreData.phsPosition ?? scoreData.position) : scoreData.position;
+
+                             // Recalculate OOD points on the fly (fixes old saved data with 0(OOD))
+                             if (status === 'OOD') {
+                                 const raceForOOD = selectedSeries.races.find(r => r.raceNumber === raceNum);
+                                 if (raceForOOD && raceForOOD.results) {
+                                     const divRes = raceForOOD.results.filter(r =>
+                                         (r.division || '1') == division &&
+                                         (r.sailNumber !== scoreData.sailNumber || r.skipper !== scoreData.skipper)
+                                     );
+                                     const pointsField = isPhsViewActive ? 'phsPoints' : 'points';
+                                     const finishers = divRes.filter(r => r.status.toUpperCase() === 'FINISHED' && r[pointsField] != null);
+                                     const nonOOD = divRes.filter(r => r.status.toUpperCase() !== 'OOD' && r.status !== '');
+                                     if (finishers.length > 0) {
+                                         pts = Math.round((finishers.reduce((s, r) => s + r[pointsField], 0) / finishers.length) * 10) / 10;
+                                     } else if (nonOOD.length > 0) {
+                                         pts = nonOOD.length + 1;
+                                     } else {
+                                         pts = raceForOOD.results.filter(r => r.status.toUpperCase() !== 'OOD').length + 1;
+                                     }
+                                 }
+                             }
+
+                             competitor.raceScores.set(raceNum, { points: pts, status, position: posn, discarded: false });
                         } else {
                             const correspondingRace = selectedSeries.races.find(r => r.raceNumber === raceNum);
                             const raceHasResultsInDivision = correspondingRace && correspondingRace.results && correspondingRace.results.some(r => (r.division || '1') == division);
@@ -686,17 +733,26 @@
             individualRaceTableContainer.innerHTML = '';
             individualRaceInfo.innerHTML = '';
             const race = selectedSeries.races.find(r => r.raceNumber === parseInt(raceNumber));
-
             if (!race) { return; }
 
+            const isPursuit = selectedSeries.isPursuitRace || false;
+
+            // ── Race info header: date + wind ─────────────────────────────────
+            let infoHTML = '';
             if (race.date) {
                 const raceDate = new Date(race.date);
                 if (!isNaN(raceDate.getTime())) {
                     const day = String(raceDate.getUTCDate()).padStart(2, '0');
                     const month = String(raceDate.getUTCMonth() + 1).padStart(2, '0');
                     const year = raceDate.getUTCFullYear();
-                    individualRaceInfo.innerHTML = `<p style="text-align: center; font-weight: bold;">Date: ${day}/${month}/${year}</p>`;
+                    infoHTML += `<span><strong>Date:</strong> ${day}/${month}/${year}</span>`;
                 }
+            }
+            if (race.windStart || race.windEnd) {
+                infoHTML += `<span style="margin-left:20px;"><strong>Wind start of race:</strong> ${race.windStart ?? '?'} knots &nbsp;|&nbsp; <strong>Wind end of race:</strong> ${race.windEnd ?? '?'} knots</span>`;
+            }
+            if (infoHTML) {
+                individualRaceInfo.innerHTML = `<p style="text-align:center;">${infoHTML}</p>`;
             }
 
             if (!race.results || race.results.length === 0) {
@@ -704,21 +760,55 @@
                 return;
             }
 
+            // ── Pursuit Race display ──────────────────────────────────────────
+            if (isPursuit) {
+                const seenKeys = new Set();
+                const results = race.results.filter(r => {
+                    const k = `${r.sailNumber}-${r.skipper}`;
+                    if (seenKeys.has(k)) return false;
+                    seenKeys.add(k); return true;
+                }).sort((a, b) => (a.position ?? Infinity) - (b.position ?? Infinity));
+
+                const header = document.createElement('h3');
+                header.classList.add('division-results-header');
+                header.textContent = `Race ${raceNumber} – Pursuit Race Results`;
+                individualRaceTableContainer.appendChild(header);
+
+                const table = document.createElement('table');
+                table.classList.add('results-table', 'individual-race-table');
+                table.innerHTML = `
+                    <thead><tr><th>Pos</th><th>Sail No</th><th>Boat Type</th><th>Helm</th><th>Start Time</th><th>Laps</th><th>Elapsed</th><th>Status</th><th>Points</th></tr></thead>
+                    <tbody></tbody>`;
+                const tbody = table.querySelector('tbody');
+                results.forEach(r => {
+                    const row = tbody.insertRow();
+                    const status = (r.status || '').toUpperCase();
+                    row.innerHTML = `
+                        <td>${r.position ?? status}</td>
+                        <td>${r.sailNumber}</td><td>${r.boatClass}</td><td>${r.skipper}</td>
+                        <td>${r.pursuitStartTime || '-'}</td>
+                        <td>${r.pursuitLaps !== null && r.pursuitLaps !== undefined ? r.pursuitLaps : '-'}</td>
+                        <td>${r.elapsedTime || '-'}</td>
+                        <td>${status || 'N/F'}</td>
+                        <td>${r.points ?? '-'}</td>`;
+                });
+                individualRaceTableContainer.appendChild(table);
+                return;
+            }
+
+            // ── Standard / Short Course display ──────────────────────────────
             const allDivisions = [...new Set(race.results.map(r => String(r.division || '1')))].sort();
 
             allDivisions.forEach(division => {
-                 const divisionResultsRaw = race.results
-                    .filter(r => (r.division || '1') == division)
-                    .sort((a,b) => (a.position || Infinity) - (b.position || Infinity));
+                const divisionResultsRaw = race.results
+                    .filter(r => (r.division || '1') == division);
 
                 if (divisionResultsRaw.length === 0) return;
 
                 const seenCompetitors = new Set();
                 const divisionResults = divisionResultsRaw.filter(result => {
                     const competitorKey = `${result.sailNumber}-${result.skipper}`;
-                    if (seenCompetitors.has(competitorKey)) {
-                        return false; 
-                    }
+                    if (seenCompetitors.has(competitorKey)) return false;
                     seenCompetitors.add(competitorKey);
                     return true;
                 });
@@ -729,67 +819,177 @@
 
                 const table = document.createElement('table');
                 table.classList.add('results-table', 'individual-race-table');
-                
+
                 if (isElapsedViewActive) {
+                    // ── Elapsed Time view ─────────────────────────────────────
                     divisionHeader.textContent = `Race ${raceNumber} - Div ${division} (By Elapsed Time)`;
                     table.innerHTML = `
                         <thead><tr><th>Pos</th><th>Sail No</th><th>Boat Type</th><th>Helm</th><th>YS</th><th>Elapsed</th><th>Status</th></tr></thead>
                         <tbody></tbody>`;
                     const tbody = table.querySelector('tbody');
-
                     const finishers = divisionResults
                         .filter(r => r.status.toUpperCase() === 'FINISHED' && r.elapsedTime)
                         .sort((a, b) => a.elapsedTime.localeCompare(b.elapsedTime));
-                    
                     const nonFinishers = divisionResults
                         .filter(r => r.status.toUpperCase() !== 'FINISHED' || !r.elapsedTime)
-                        .sort((a,b) => (a.position || Infinity) - (b.position || Infinity));
-
+                        .sort((a, b) => (a.position || Infinity) - (b.position || Infinity));
                     let pos = 1;
                     finishers.forEach(result => {
-                        const row = tbody.insertRow();
-                        row.innerHTML = `
+                        tbody.insertRow().innerHTML = `
                             <td>${pos++}</td><td>${result.sailNumber}</td><td>${result.boatClass}</td><td>${result.skipper}</td>
                             <td>${result.yardstick}</td><td>${result.elapsedTime}</td><td>Finished</td>`;
                     });
-
                     nonFinishers.forEach(result => {
+                        const s = result.status.toUpperCase();
+                        tbody.insertRow().innerHTML = `
+                            <td>${s}</td><td>${result.sailNumber}</td><td>${result.boatClass}</td><td>${result.skipper}</td>
+                            <td>${result.yardstick}</td><td>-</td><td>${s}</td>`;
+                    });
+
+                } else if (isPhsViewActive) {
+                    // ── PHS view ─────────────────────────────────────────────
+                    divisionHeader.textContent = `Race ${raceNumber} - Div ${division} (PHS)`;
+                    table.innerHTML = `
+                        <thead><tr><th>Pos</th><th>Sail No</th><th>Boat Type</th><th>Helm</th><th>Start PHS</th><th>Elapsed</th><th>Corrected</th><th>Points</th><th>Next PHS</th></tr></thead>
+                        <tbody></tbody>`;
+                    const tbody = table.querySelector('tbody');
+                    const sorted = [...divisionResults].sort((a, b) => (a.phsPosition ?? Infinity) - (b.phsPosition ?? Infinity));
+                    sorted.forEach(result => {
                         const row = tbody.insertRow();
-                        const statusDisplay = result.status.toUpperCase();
+                        const status = result.status.toUpperCase();
+                        const isFinished = status === 'FINISHED';
+                        const startPhs = result.phs !== undefined ? parseFloat(result.phs).toFixed(3) : '-';
+                        const nextPhs = result.nextPhs !== undefined ? parseFloat(result.nextPhs).toFixed(3) : '-';
+                        const elapsed = isFinished ? (result.elapsedTime || '-') : `<span class="status-in-elapsed">${status}</span>`;
+                        const corrected = isFinished ? (result.phsCorrectedTime || '-') : '-';
+                        let displayPhsPoints = result.phsPoints;
+                        // Recalc OOD points on the fly for PHS view
+                        if (status === 'OOD') {
+                            const others = divisionResults.filter(r => r.sailNumber !== result.sailNumber || r.skipper !== result.skipper);
+                            const finishers = others.filter(r => r.status.toUpperCase() === 'FINISHED' && r.phsPoints != null);
+                            const nonOOD = others.filter(r => r.status.toUpperCase() !== 'OOD' && r.status !== '');
+                            if (finishers.length > 0) {
+                                displayPhsPoints = Math.round((finishers.reduce((s, r) => s + r.phsPoints, 0) / finishers.length) * 10) / 10;
+                            } else if (nonOOD.length > 0) {
+                                displayPhsPoints = nonOOD.length + 1;
+                            } else {
+                                displayPhsPoints = divisionResults.filter(r => r.status.toUpperCase() !== 'OOD').length + 1;
+                            }
+                        }
                         row.innerHTML = `
-                            <td>${statusDisplay}</td><td>${result.sailNumber}</td><td>${result.boatClass}</td><td>${result.skipper}</td>
-                            <td>${result.yardstick}</td><td>-</td><td>${statusDisplay}</td>`;
+                            <td>${result.phsPosition ?? status}</td><td>${result.sailNumber}</td><td>${result.boatClass}</td><td>${result.skipper}</td>
+                            <td>${startPhs}</td><td>${elapsed}</td><td>${corrected}</td>
+                            <td>${displayPhsPoints ?? '-'}</td><td><strong>${nextPhs}</strong></td>`;
                     });
 
                 } else {
+                    // ── Yardstick view (default) ──────────────────────────────
                     divisionHeader.textContent = `Race ${raceNumber} - Div ${division}`;
                     table.innerHTML = `
                         <thead><tr><th>Pos</th><th>Sail No</th><th>Boat Type</th><th>Helm</th><th>YS</th><th>Elapsed</th><th>Corrected</th><th>Points</th></tr></thead>
                         <tbody></tbody>`;
-                    
                     const tbody = table.querySelector('tbody');
-
-                    divisionResults.forEach(result => {
+                    const sorted = [...divisionResults].sort((a, b) => (a.position ?? Infinity) - (b.position ?? Infinity));
+                    sorted.forEach(result => {
                         const row = tbody.insertRow();
-                        let elapsedCellContent = result.elapsedTime || '-';
-                        let correctedCellContent = result.correctedTime || '-';
-                        if (result.status.toUpperCase() !== 'FINISHED') {
-                            elapsedCellContent = `<span class="status-in-elapsed">${result.status.toUpperCase()}</span>`;
-                            correctedCellContent = '-';
+                        const status = result.status.toUpperCase();
+                        const isFinished = status === 'FINISHED';
+                        const elapsed = isFinished ? (result.elapsedTime || '-') : `<span class="status-in-elapsed">${status}</span>`;
+                        const corrected = isFinished ? (result.correctedTime || '-') : '-';
+                        let displayPoints = result.points;
+                        // Recalc OOD points on the fly (fixes old saved data with 0)
+                        if (status === 'OOD') {
+                            const others = divisionResults.filter(r => r.sailNumber !== result.sailNumber || r.skipper !== result.skipper);
+                            const finishers = others.filter(r => r.status.toUpperCase() === 'FINISHED' && r.points != null);
+                            const nonOOD = others.filter(r => r.status.toUpperCase() !== 'OOD' && r.status !== '');
+                            if (finishers.length > 0) {
+                                displayPoints = Math.round((finishers.reduce((s, r) => s + r.points, 0) / finishers.length) * 10) / 10;
+                            } else if (nonOOD.length > 0) {
+                                displayPoints = nonOOD.length + 1;
+                            } else {
+                                displayPoints = divisionResults.filter(r => r.status.toUpperCase() !== 'OOD').length + 1;
+                            }
                         }
                         row.innerHTML = `
-                            <td>${result.position ?? '-'}</td><td>${result.sailNumber}</td><td>${result.boatClass}</td><td>${result.skipper}</td>
-                            <td>${result.yardstick}</td><td>${elapsedCellContent}</td><td>${correctedCellContent}</td><td>${result.points ?? '-'}</td>`;
+                            <td>${result.position ?? status}</td><td>${result.sailNumber}</td><td>${result.boatClass}</td><td>${result.skipper}</td>
+                            <td>${result.yardstick}</td><td>${elapsed}</td><td>${corrected}</td><td>${displayPoints ?? '-'}</td>`;
                     });
                 }
                 individualRaceTableContainer.appendChild(table);
             });
         }
 
+        // ── Pursuit Series Standings ─────────────────────────────────────────────
+        function displayPursuitSeriesResults(selectedSeries) {
+            seriesTableContainer.innerHTML = '';
+            seriesSummary.innerHTML = '';
+
+            const racesWithResults = selectedSeries.races.filter(r => r.results && r.results.length > 0);
+            if (racesWithResults.length === 0) {
+                seriesTableContainer.innerHTML = '<p class="placeholder-message">No results have been entered yet.</p>';
+                return;
+            }
+
+            // All boats race together — no division split
+            const raceNumbers = racesWithResults.map(r => r.raceNumber).sort((a, b) => a - b);
+            const competitors = new Map();
+
+            racesWithResults.forEach(race => {
+                race.results.forEach(res => {
+                    const key = `${res.sailNumber}-${res.skipper}`;
+                    if (!competitors.has(key)) {
+                        competitors.set(key, { sailNumber: res.sailNumber, skipper: res.skipper, boatClass: res.boatClass, raceScores: new Map() });
+                    }
+                    competitors.get(key).raceScores.set(race.raceNumber, { points: res.points, status: (res.status || '').toUpperCase(), position: res.position });
+                });
+            });
+
+            const competitorsArr = Array.from(competitors.values());
+            competitorsArr.forEach(c => {
+                const scores = Array.from(c.raceScores.values()).filter(s => s.points !== null && !isNaN(s.points));
+                c.totalPoints = scores.reduce((sum, s) => sum + s.points, 0);
+                c.netPoints = c.totalPoints;
+            });
+            competitorsArr.sort((a, b) => a.netPoints - b.netPoints);
+
+            let rank = 0, pos = 0;
+            competitorsArr.forEach((c, i) => {
+                rank++;
+                if (i === 0 || c.netPoints > competitorsArr[i-1].netPoints) pos = rank;
+                c.position = pos;
+            });
+
+            const divHeader = document.createElement('h2');
+            divHeader.classList.add('division-results-header');
+            divHeader.textContent = 'Pursuit Race – Overall Standings';
+            seriesTableContainer.appendChild(divHeader);
+
+            const table = document.createElement('table');
+            table.classList.add('results-table', 'series-results-table');
+            let hdr = `<tr><th>Pos</th><th>Sail #</th><th>Skipper</th><th>Boat Class</th>`;
+            raceNumbers.forEach(n => hdr += `<th>R${n}</th>`);
+            hdr += `<th>Total</th><th>Net</th></tr>`;
+            table.innerHTML = `<thead>${hdr}</thead><tbody></tbody>`;
+            const tbody = table.querySelector('tbody');
+
+            competitorsArr.forEach(c => {
+                const row = tbody.insertRow();
+                let html = `<td>${c.position}</td><td>${c.sailNumber}</td><td>${c.skipper}</td><td>${c.boatClass}</td>`;
+                raceNumbers.forEach(rn => {
+                    const score = c.raceScores.get(rn);
+                    if (!score) { html += `<td class="nr-cell">NR</td>`; return; }
+                    const pts = score.points !== null && !isNaN(score.points) ? score.points : '-';
+                    const st = score.status;
+                    html += `<td>${st !== 'FINISHED' && st ? `${pts}(${st})` : pts}</td>`;
+                });
+                html += `<td>${c.totalPoints}</td><td><strong>${c.netPoints}</strong></td>`;
+                row.innerHTML = html;
+            });
+            seriesTableContainer.appendChild(table);
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             loadDataFromGoogleSheet();
-            const toggleBtn = document.getElementById('toggle-elapsed-view-btn');
-            
             // Set up show/hide archive click logic
             if (toggleArchiveBtn) {
                 toggleArchiveBtn.addEventListener('click', () => {
@@ -802,17 +1002,29 @@
                 });
             }
 
-            toggleBtn.addEventListener('click', () => {
-                isElapsedViewActive = !isElapsedViewActive;
-                toggleBtn.textContent = isElapsedViewActive ? 'View by Corrected Time (Official)' : 'View by Elapsed Time';
-                toggleBtn.classList.toggle('active');
+            function setRaceView(view) {
+                // view: 'yardstick' | 'phs' | 'elapsed'
+                isElapsedViewActive = view === 'elapsed';
+                isPhsViewActive = view === 'phs';
+
+                document.getElementById('btn-view-yardstick')?.classList.toggle('active', view === 'yardstick');
+                document.getElementById('btn-view-phs')?.classList.toggle('active', view === 'phs');
+                document.getElementById('btn-view-elapsed')?.classList.toggle('active', view === 'elapsed');
 
                 const activeRaceButton = document.querySelector('.race-selector .race-button.active');
                 if (currentSelectedSeries && activeRaceButton) {
-                    const raceNum = activeRaceButton.dataset.raceNumber;
-                    displayIndividualRaceResults(currentSelectedSeries, raceNum);
+                    displayIndividualRaceResults(currentSelectedSeries, activeRaceButton.dataset.raceNumber);
                 }
+                if (view === 'phs' && currentSelectedSeries) displaySeriesResults(currentSelectedSeries);
+                if (view === 'yardstick' && currentSelectedSeries) displaySeriesResults(currentSelectedSeries);
+            }
+
+            document.getElementById('btn-view-yardstick')?.addEventListener('click', () => setRaceView('yardstick'));
+            document.getElementById('btn-view-phs')?.addEventListener('click', () => {
+                if (currentSelectedSeries?.isPursuitRace) return;
+                setRaceView('phs');
             });
+            document.getElementById('btn-view-elapsed')?.addEventListener('click', () => setRaceView('elapsed'));
         });
 
     </script>
