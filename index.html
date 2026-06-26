@@ -517,16 +517,9 @@
             }
 
             const racesWithResults = selectedSeries.races.filter(r => r.results && r.results.length > 0);
-            const completedRacesCount = racesWithResults.length;
-            
-            let numDiscardsToApply = 0;
             const discardThreshold = selectedSeries.discardThreshold ?? 0;
 
-            if (discardThreshold > 0 && completedRacesCount > 0) {
-                numDiscardsToApply = Math.floor(completedRacesCount / discardThreshold);
-            }
-
-            if (completedRacesCount === 0) {
+            if (racesWithResults.length === 0) {
                  if(selectedSeries.races.length > 0) {
                     seriesTableContainer.innerHTML = '<p class="placeholder-message">No results have been entered for this series yet.</p>';
                  } else {
@@ -538,6 +531,12 @@
             const allDivisions = [...new Set(racesWithResults.flatMap(r => r.results.map(res => String(res.division || '1'))))].sort();
 
             allDivisions.forEach(division => {
+                // Calculate discards per-division based on races that have results in THIS division only
+                const racesWithResultsInDiv = racesWithResults.filter(r => r.results.some(res => String(res.division || '1') === division));
+                const completedRacesCount = racesWithResultsInDiv.length;
+                const numDiscardsToApply = (discardThreshold > 0 && completedRacesCount > 0)
+                    ? Math.floor(completedRacesCount / discardThreshold)
+                    : 0;
                 const divisionHeader = document.createElement('h2');
                 divisionHeader.classList.add('division-results-header');
                 seriesTableContainer.appendChild(divisionHeader);
