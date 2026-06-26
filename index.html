@@ -269,6 +269,10 @@
 
             <div id="series-results-section">
                 <h2>Overall Series Standings</h2>
+                <div style="text-align:center; margin-bottom:10px; display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+                    <button id="series-btn-yardstick" class="race-view-toggle active">Yardstick</button>
+                    <button id="series-btn-phs" class="race-view-toggle">PHS</button>
+                </div>
                 <div id="series-summary"></div>
                 <div id="series-table-container" class="results-output-container">
                     <!-- Divisional series tables will be inserted here -->
@@ -462,6 +466,8 @@
              document.getElementById('btn-view-yardstick')?.classList.add('active');
              document.getElementById('btn-view-phs')?.classList.remove('active');
              document.getElementById('btn-view-elapsed')?.classList.remove('active');
+             document.getElementById('series-btn-yardstick')?.classList.add('active');
+             document.getElementById('series-btn-phs')?.classList.remove('active');
 
             if (!selectedSeriesId) { 
                 seriesTableContainer.innerHTML = '';
@@ -497,9 +503,13 @@
 
             const isPursuit = selectedSeries.isPursuitRace || false;
             const scoreTypeBtn2 = document.getElementById('toggle-score-type-btn');
-            // Hide PHS button for pursuit races
+            // Hide PHS buttons for pursuit races
             const phsBtn = document.getElementById('btn-view-phs');
             if (phsBtn) phsBtn.style.display = isPursuit ? 'none' : '';
+            const seriesPhsBtn = document.getElementById('series-btn-phs');
+            if (seriesPhsBtn) seriesPhsBtn.style.display = isPursuit ? 'none' : '';
+            const seriesYsBtn = document.getElementById('series-btn-yardstick');
+            if (seriesYsBtn) seriesYsBtn.style.display = isPursuit ? 'none' : '';
 
             if (isPursuit) {
                 displayPursuitSeriesResults(selectedSeries);
@@ -1010,6 +1020,9 @@
                 document.getElementById('btn-view-yardstick')?.classList.toggle('active', view === 'yardstick');
                 document.getElementById('btn-view-phs')?.classList.toggle('active', view === 'phs');
                 document.getElementById('btn-view-elapsed')?.classList.toggle('active', view === 'elapsed');
+                // Keep series buttons in sync (elapsed doesn't affect series buttons)
+                document.getElementById('series-btn-yardstick')?.classList.toggle('active', view !== 'phs');
+                document.getElementById('series-btn-phs')?.classList.toggle('active', view === 'phs');
 
                 const activeRaceButton = document.querySelector('.race-selector .race-button.active');
                 if (currentSelectedSeries && activeRaceButton) {
@@ -1025,6 +1038,35 @@
                 setRaceView('phs');
             });
             document.getElementById('btn-view-elapsed')?.addEventListener('click', () => setRaceView('elapsed'));
+
+            document.getElementById('series-btn-yardstick')?.addEventListener('click', () => {
+                isPhsViewActive = false;
+                document.getElementById('series-btn-yardstick')?.classList.add('active');
+                document.getElementById('series-btn-phs')?.classList.remove('active');
+                // Keep race view buttons in sync
+                document.getElementById('btn-view-yardstick')?.classList.add('active');
+                document.getElementById('btn-view-phs')?.classList.remove('active');
+                document.getElementById('btn-view-elapsed')?.classList.remove('active');
+                isElapsedViewActive = false;
+                if (currentSelectedSeries) displaySeriesResults(currentSelectedSeries);
+                const activeRaceButton = document.querySelector('.race-selector .race-button.active');
+                if (currentSelectedSeries && activeRaceButton) displayIndividualRaceResults(currentSelectedSeries, activeRaceButton.dataset.raceNumber);
+            });
+
+            document.getElementById('series-btn-phs')?.addEventListener('click', () => {
+                if (currentSelectedSeries?.isPursuitRace) return;
+                isPhsViewActive = true;
+                isElapsedViewActive = false;
+                document.getElementById('series-btn-phs')?.classList.add('active');
+                document.getElementById('series-btn-yardstick')?.classList.remove('active');
+                // Keep race view buttons in sync
+                document.getElementById('btn-view-phs')?.classList.add('active');
+                document.getElementById('btn-view-yardstick')?.classList.remove('active');
+                document.getElementById('btn-view-elapsed')?.classList.remove('active');
+                if (currentSelectedSeries) displaySeriesResults(currentSelectedSeries);
+                const activeRaceButton = document.querySelector('.race-selector .race-button.active');
+                if (currentSelectedSeries && activeRaceButton) displayIndividualRaceResults(currentSelectedSeries, activeRaceButton.dataset.raceNumber);
+            });
         });
 
     </script>
